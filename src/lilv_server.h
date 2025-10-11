@@ -1,5 +1,5 @@
-#ifndef LILV_PLUGIN_SERVER_H
-#define LILV_PLUGIN_SERVER_H
+#ifndef LILV_SERVER_H
+#define LILV_SERVER_H
 
 
 #include "godot_cpp/classes/mutex.hpp"

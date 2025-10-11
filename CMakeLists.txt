@@ -34,9 +34,42 @@ elseif(UNIX)
     endif()
 endif()
 
-add_compile_definitions(-DBOOST_ASIO_DISABLE_BOOST_CONTEXT_FIBER)
+project(godot-lilv VERSION 0.1.0 LANGUAGES C CXX)
 
 message(STATUS "VCPKG_TARGET_TRIPLET: ${VCPKG_TARGET_TRIPLET}")
 message(STATUS "CMAKE_TOOLCHAIN_FILE: ${CMAKE_TOOLCHAIN_FILE}")
 
-project(godot-lilv VERSION 0.1.0)
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Debug CACHE STRING "Build type" FORCE)
+endif()
+
+set(SOURCE
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/host/main.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/lilv_host.cpp
+)
+set(HEADER
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/lilv_host.h
+)
+
+add_executable(lilv-host ${SOURCE} ${HEADER})
+
+set_target_properties(lilv-host PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+
+target_include_directories(lilv-host PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/host
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
+
+find_package(Lilv CONFIG QUIET)
+if(Lilv_FOUND)
+    target_link_libraries(lilv-host PRIVATE Lilv::Lilv)
+else()
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(LILV REQUIRED IMPORTED_TARGET lilv-0)
+    target_link_libraries(lilv-host PRIVATE PkgConfig::LILV)
+endif()
+

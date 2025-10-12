@@ -65,6 +65,7 @@ target_include_directories(lilv-host PUBLIC
 )
 
 find_package(Lilv CONFIG QUIET)
+
 if(Lilv_FOUND)
     target_link_libraries(lilv-host PRIVATE Lilv::Lilv)
 else()
@@ -73,3 +74,5 @@ else()
     target_link_libraries(lilv-host PRIVATE PkgConfig::LILV)
 endif()
 
+find_package(SndFile CONFIG REQUIRED)
+target_link_libraries(lilv-host PRIVATE SndFile::sndfile)

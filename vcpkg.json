@@ -2,6 +2,7 @@
   "name": "godot-lilv",
   "version": "0.0.1",
   "dependencies": [
-    "lilv"
+    "lilv",
+    "libsndfile"
   ]
 }

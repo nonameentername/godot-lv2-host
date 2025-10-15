@@ -126,8 +126,10 @@ private:
 
     std::vector<std::vector<float>> audio;
     std::vector<float *> audio_ptrs;
+    std::vector<float *> audio_in_ptrs;
     std::vector<float *> audio_out_ptrs;
     uint32_t channels{};
+    uint32_t in_ch_effective{};
     uint32_t out_ch_effective{};
 
     // Atom ports
@@ -171,7 +173,7 @@ public:
     bool load_world();
     bool find_plugin(const std::string &plugin_uri);
     bool instantiate();
-    void setCliControlOverrides(const std::vector<std::pair<std::string, float>> &name_value_pairs);
+    void set_cli_control_overrides(const std::vector<std::pair<std::string, float>> &name_value_pairs);
 
     void dump_plugin_features() const;
     void dump_host_features() const;

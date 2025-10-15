@@ -3,11 +3,13 @@
 
 using namespace godot;
 
-static inline const char* cstr_or(const char* s, const char* fallback = "") { return s ? s : fallback; }
-static inline std::string to_string_safe(const char* s, const char* fallback = "") { return std::string(cstr_or(s, fallback)); }
 
 int main(int argc, char **argv) {
-    const std::string plugin_uri = to_string_safe(argv[1], "");
+    if (argc != 2) {
+        std::cout << "Usage: " << argv[0] << " <plugin_uri>" << std::endl;
+        return 1;
+    }
+    const std::string plugin_uri = argv[1];
 	const double dur_sec = 3.0;
 	const double sr      = 48000.0;
 	uint32_t block       = 1024;
@@ -41,7 +43,7 @@ int main(int argc, char **argv) {
 	lilv_host->dump_host_features();
 
 	lilv_host->wire_worker_interface();
-	lilv_host->setCliControlOverrides(cli_sets);
+	lilv_host->set_cli_control_overrides(cli_sets);
 
 	if (!lilv_host->prepare_ports_and_buffers()) {
 		std::cerr << "Failed to prepare/connect ports\n";

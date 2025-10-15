@@ -4,7 +4,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <exception>
+//#include <exception>
 #include <iostream>
 #include <sndfile.h>
 #include <vector>
@@ -16,7 +16,8 @@ static inline const char *cstr_or(const char *s, const char *fb = "") {
     return s ? s : fb;
 }
 static inline std::string to_string_safe(const char *s, const char *fb = "") {
-    return std::string(cstr_or(s, fb));
+    const char* value = s ? s : fb;
+    return std::string(value);
 }
 
 // ============================================================
@@ -364,7 +365,7 @@ void LilvHost::wire_worker_interface() {
     worker.handle = lilv_instance_get_handle(inst);
 }
 
-void LilvHost::setCliControlOverrides(const std::vector<std::pair<std::string, float>> &nvp) {
+void LilvHost::set_cli_control_overrides(const std::vector<std::pair<std::string, float>> &nvp) {
     cli_sets = nvp;
 }
 
@@ -638,6 +639,10 @@ bool LilvHost::prepare_ports_and_buffers() {
         audio_ptrs[c] = audio[c].data();
     }
 
+
+    in_ch_effective = (num_audio_out ? num_audio_out : 1u);
+    audio_in_ptrs.assign(in_ch_effective, nullptr);
+
     out_ch_effective = (num_audio_out ? num_audio_out : 1u);
     audio_out_ptrs.assign(out_ch_effective, nullptr);
 
@@ -657,6 +662,9 @@ bool LilvHost::prepare_ports_and_buffers() {
             float *buf = (channels ? audio_ptrs[std::min(in_idx, channels - 1)] : nullptr);
             port_buffers[i] = buf;
             lilv_instance_connect_port(inst, i, buf);
+            if (in_idx < audio_in_ptrs.size()) {
+                audio_in_ptrs[in_idx] = buf;
+            }
             ++in_idx;
             continue;
         }
@@ -734,7 +742,6 @@ bool LilvHost::run_offline(double duration_sec, double freq_hz, float gain, bool
     size_t done = 0;
     double phase = 0.0;
     const double twopi = 6.283185307179586;
-    const uint32_t in_ch = num_audio_in ? num_audio_in : (out_ch_effective ? out_ch_effective : 1);
     size_t elapsed_frames = 0;
 
     while (done < total_frames) {
@@ -747,8 +754,9 @@ bool LilvHost::run_offline(double duration_sec, double freq_hz, float gain, bool
             for (uint32_t i = 0; i < n; ++i) {
                 float s = gain * (float)std::sin(phase);
                 phase += twopi * freq_hz / sr;
-                for (uint32_t c = 0; c < in_ch; ++c) {
-                    audio[c][i] = s;
+                for (uint32_t c = 0; c < in_ch_effective; ++c) {
+                    audio_in_ptrs[c][i] = s;
+                    //audio_in_ptrs[c][i] = 0;
                 }
             }
             if (n < block) {

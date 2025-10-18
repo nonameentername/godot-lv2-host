@@ -239,7 +239,10 @@ bool LilvHost::find_plugin(const std::string &plugin_uri) {
         const LilvPlugin *p = lilv_plugins_get(plugins, i);
         const LilvNode *node = lilv_plugin_get_uri(p);
 
-        std::cout << "plugin name: " << lilv_node_as_string(node) << "\n";
+        //TODO: turn on/off logging
+        if (false) {
+            std::cout << "plugin name: " << lilv_node_as_string(node) << "\n";
+        }
 
         if (lilv_node_equals(node, uri_node)) {
             plugin = p;
@@ -258,15 +261,9 @@ bool LilvHost::instantiate() {
     if (!plugin) {
         return false;
     }
-    //try {
-        inst = lilv_plugin_instantiate(plugin, sr, get_features());
-    //} catch (const std::exception &e) {
-    //    std::cerr << "[host] Exception during instantiate: " << e.what() << "\n";
-    //    return false;
-    //} catch (...) {
-    //    std::cerr << "[host] Unknown exception during instantiate\n";
-    //    return false;
-    //}
+
+    inst = lilv_plugin_instantiate(plugin, sr, features);
+
     if (!inst) {
         return false;
     }
@@ -470,7 +467,7 @@ bool LilvHost::prepare_ports_and_buffers(int p_frames) {
                 const uint32_t forge_bytes = (uint32_t)(a.buf.size() * sizeof(std::max_align_t));
 #endif
                 a.seq = reinterpret_cast<LV2_Atom_Sequence *>(a.buf.data());
-                lv2_atom_forge_init(&a.forge, urid_map());
+                lv2_atom_forge_init(&a.forge, &map);
                 // Save per-input forge size if you prefer; here we recompute per block.
                 atom_inputs.push_back(std::move(a));
             }

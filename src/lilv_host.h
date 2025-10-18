@@ -16,7 +16,7 @@
 #include <lilv/lilv.h>
 
 #include <cstdarg>
-#include <cstddef> // std::max_align_t
+#include <cstddef>
 #include <cstdint>
 #include <string>
 #include <unordered_map>
@@ -214,19 +214,6 @@ public:
 
 	void write_midi_out(int p_bus, const MidiEvent& p_midi_event);
 	bool read_midi_out(int p_bus, MidiEvent& p_midi_event);
-
-    const LV2_Feature *const *get_features() const {
-        return features;
-    }
-    LV2_URID_Map *urid_map() {
-        return &map;
-    }
-    const URIDs &get_urids() const {
-        return urids;
-    }
-    double sample_rate() const {
-        return sr;
-    }
 
     void rt_deliver_worker_responses();
     void non_rt_do_worker_requests();

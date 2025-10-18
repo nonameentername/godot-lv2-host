@@ -17,3 +17,5 @@ src/version_generated.gen.h
 src/gen
 doc_classes/_build
 __pycache__
+scripts/output.txt
+scripts/out.wav

@@ -182,34 +182,20 @@ bool run_offline(LilvHost *lilv_host, double sr, double duration_sec, double fre
 
 		lilv_host->perform(block);
 
-        if (midi_enabled && lilv_host->get_output_midi_count() > 0) {
-            MidiEvent midi_event;
-            while(lilv_host->read_midi_out(0, midi_event)) {
-                std::cout << "  MIDI:";
-                for (uint32_t i = 0; i < midi_event.size; i++) {
-                    std::cout << " " << std::hex << (int)midi_event.data[i] << std::dec;
-                }
-                std::cout << std::endl;
-            }
-        }
+        bool dump_midi_out = false;
 
-        // (optional) dump atom outputs
-        /*
-        for (auto& o : atom_outputs_) {
-            auto* seq = o.seq;
-            if (seq->atom.size <= sizeof(LV2_Atom_Sequence_Body)) continue;
-            std::cout << "[events_out port " << o.index << "] size=" << seq->atom.size << "\n";
-            LV2_ATOM_SEQUENCE_FOREACH(seq, ev) {
-                std::cout << "  ev t=" << ev->time.frames << " type=" << ev->body.type << " size=" << ev->body.size;
-                if (ev->body.type == urids_.midi_MidiEvent && ev->body.size >= 1) {
-                    const uint8_t* b = (const uint8_t*)LV2_ATOM_BODY(&ev->body);
+        if (dump_midi_out) {
+            if (midi_enabled && lilv_host->get_output_midi_count() > 0) {
+                MidiEvent midi_event;
+                while(lilv_host->read_midi_out(0, midi_event)) {
                     std::cout << "  MIDI:";
-                    for (uint32_t i = 0; i < ev->body.size; ++i) std::cout << " " << std::hex << (int)b[i] << std::dec;
+                    for (uint32_t i = 0; i < midi_event.size; i++) {
+                        std::cout << " " << std::hex << (int)midi_event.data[i] << std::dec;
+                    }
+                    std::cout << std::endl;
                 }
-                std::cout << "\n";
             }
         }
-        */
 
         // write audio to wav
         for (uint32_t c = 0; c < lilv_host->get_output_channel_count(); ++c) {
@@ -264,13 +250,20 @@ int main(int argc, char **argv) {
 		return 2;
 	}
 
-	lilv_host->dump_plugin_features();
+    //TODO: enable/disble
+    if (false) {
+        lilv_host->dump_plugin_features();
+    }
 
 	if (!lilv_host->instantiate()) {
 		std::cerr << "Failed to instantiate plugin\n";
 		return 3;
 	}
-	lilv_host->dump_host_features();
+
+    //TODO: enable/disable
+    if (false) {
+        lilv_host->dump_host_features();
+    }
 
 	lilv_host->wire_worker_interface();
 	lilv_host->set_cli_control_overrides(cli_sets);
@@ -280,7 +273,10 @@ int main(int argc, char **argv) {
 		return 3;
 	}
 
-	lilv_host->dump_ports();
+    //TODO: enable/disable
+    if (false) {
+        lilv_host->dump_ports();
+    }
 
 	lilv_host->activate();
 

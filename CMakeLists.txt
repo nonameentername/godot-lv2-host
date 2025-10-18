@@ -50,6 +50,7 @@ endif()
 set(SOURCE
     ${CMAKE_CURRENT_SOURCE_DIR}/src/host/main.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/lilv_host.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/lilv_circular_buffer.cpp
 )
 set(HEADER
     ${CMAKE_CURRENT_SOURCE_DIR}/src/lilv_host.h

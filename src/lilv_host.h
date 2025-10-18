@@ -22,7 +22,11 @@
 #include <unordered_map>
 #include <vector>
 
+#include "lilv_circular_buffer.h"
+
 namespace godot {
+
+const int MIDI_BUFFER_SIZE = 2048;
 
 struct URIDs {
     LV2_URID atom_Int{}, atom_Float{};
@@ -51,6 +55,14 @@ struct AtomOut {
     LV2_Atom_Sequence *seq{nullptr};
 };
 
+struct MidiEvent {
+	static constexpr const uint32_t DATA_SIZE = 3;
+
+	int frame{};
+	uint8_t data[DATA_SIZE];
+	int size = DATA_SIZE;
+};
+
 class LilvHost {
 private:
     // lv2:state helpers
@@ -64,7 +76,6 @@ private:
 
     // config
     double sr{};
-    uint32_t block{};
     uint32_t seq_bytes{};
 
     // LILV objects
@@ -129,13 +140,15 @@ private:
     std::vector<float *> audio_in_ptrs;
     std::vector<float *> audio_out_ptrs;
     uint32_t channels{};
-    uint32_t in_ch_effective{};
-    uint32_t out_ch_effective{};
 
     // Atom ports
     std::vector<AtomIn> atom_inputs;
     std::vector<AtomOut> atom_outputs;
     uint32_t seq_capacity_hint{}; // BYTES
+
+    // Midi buffers
+    std::vector<LilvCircularBuffer<int>> midi_input_buffer;
+    std::vector<LilvCircularBuffer<int>> midi_output_buffer;
 
     // CLI overrides
     std::vector<std::pair<std::string, float>> cli_sets;
@@ -145,7 +158,7 @@ private:
     static const char *s_unmap_cb(LV2_URID_Unmap_Handle, LV2_URID urid);
     LV2_URID map_uri(const char *uri);
     void premap_common_uris();
-    void rebuild_options();
+    void rebuild_options(int p_frames);
 
     // lv2:log
     static int s_log_printf(LV2_Log_Handle, LV2_URID type, const char *fmt, ...);
@@ -164,7 +177,7 @@ private:
     static LV2_Worker_Status s_worker_respond(LV2_Worker_Respond_Handle, uint32_t size, const void *data);
 
 public:
-    LilvHost(double sr, uint32_t block_frames, uint32_t seq_bytes = 4096);
+    LilvHost(double sr, int p_frames, uint32_t seq_bytes = 4096);
     ~LilvHost();
 
     LilvHost(const LilvHost &) = delete;
@@ -179,14 +192,28 @@ public:
     void dump_host_features() const;
     void dump_ports() const;
 
-    bool prepare_ports_and_buffers();
+    bool prepare_ports_and_buffers(int p_frames);
     void activate();
     void deactivate();
 
     void wire_worker_interface();
 
-    bool run_offline(double duration_sec, double freq_hz, float gain, bool midi_enabled, int midi_note,
-                     const std::string &out_path);
+    int perform(int p_frames);
+
+    int get_input_channel_count();
+    int get_output_channel_count();
+
+    int get_input_midi_count();
+    int get_output_midi_count();
+
+    float *get_input_channel_buffer(int p_channel);
+    float *get_output_channel_buffer(int p_channel);
+
+	void write_midi_in(int p_bus, const MidiEvent& p_midi_event);
+	bool read_midi_in(int p_bus, MidiEvent& p_midi_event);
+
+	void write_midi_out(int p_bus, const MidiEvent& p_midi_event);
+	bool read_midi_out(int p_bus, MidiEvent& p_midi_event);
 
     const LV2_Feature *const *get_features() const {
         return features;
@@ -199,9 +226,6 @@ public:
     }
     double sample_rate() const {
         return sr;
-    }
-    uint32_t block_frames() const {
-        return block;
     }
 
     void rt_deliver_worker_responses();

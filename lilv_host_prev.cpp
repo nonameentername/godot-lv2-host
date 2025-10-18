@@ -6,6 +6,7 @@
 #include <cstring>
 //#include <exception>
 #include <iostream>
+#include <sndfile.h>
 #include <vector>
 
 using namespace godot;
@@ -28,6 +29,87 @@ static inline std::string to_string_safe(const char *s, const char *fb = "") {
 #define LILVHOST_DBG 0
 #endif
 
+// ========== Robust RAII WAV writer (non-copyable, movable) ==========
+struct WavWriter {
+    SNDFILE *f = nullptr;
+    SF_INFO info{};
+
+    WavWriter() = default;
+    ~WavWriter() {
+        close();
+    }
+
+    WavWriter(const WavWriter &) = delete;
+    WavWriter &operator=(const WavWriter &) = delete;
+
+    WavWriter(WavWriter &&other) noexcept {
+        *this = std::move(other);
+    }
+    WavWriter &operator=(WavWriter &&other) noexcept {
+        if (this != &other) {
+            close();
+            f = other.f;
+            info = other.info;
+            other.f = nullptr;
+            other.info = {};
+        }
+        return *this;
+    }
+
+    bool open(const char *path, int sr, int channels) {
+        close(); // just in case
+        info = {};
+        info.samplerate = sr;
+        info.channels = channels;
+        info.format = SF_FORMAT_WAV | SF_FORMAT_PCM_16;
+
+        f = sf_open(path, SFM_WRITE, &info);
+        if (!f) {
+            const char *err = sf_strerror(nullptr);
+            std::fprintf(stderr, "[WavWriter] sf_open failed for '%s': %s\n", path ? path : "(null)",
+                         err ? err : "(unknown)");
+            return false;
+        }
+        return true;
+    }
+
+    void write_interleaved(const float *const *ch, size_t frames, int channels) {
+        if (!f || !ch || channels <= 0 || frames == 0) {
+            return;
+        }
+
+        std::vector<short> tmp(frames * (size_t)channels);
+        for (size_t i = 0; i < frames; ++i) {
+            for (int c = 0; c < channels; ++c) {
+                float v = ch[c] ? ch[c][i] : 0.0f;
+                if (v > 1.f) {
+                    v = 1.f;
+                }
+                if (v < -1.f) {
+                    v = -1.f;
+                }
+                tmp[i * channels + c] = (short)std::lrintf(v * 32767.f);
+            }
+        }
+
+        sf_count_t want = (sf_count_t)tmp.size();
+        sf_count_t wrote = sf_write_short(f, tmp.data(), want);
+        if (wrote != want) {
+            const int errc = sf_error(f);
+            const char *msg = sf_error_number(errc);
+            std::fprintf(stderr, "[WavWriter] sf_write_short wrote %lld/%lld: %s\n", (long long)wrote, (long long)want,
+                         msg ? msg : "(unknown)");
+        }
+    }
+
+    void close() {
+        if (f) {
+            (void)sf_write_sync(f);
+            (void)sf_close(f);
+            f = nullptr;
+        }
+    }
+};
 
 // ===================== Canary helpers (debug only) =====================
 #if LILVHOST_DBG
@@ -533,10 +615,6 @@ bool LilvHost::prepare_ports_and_buffers(int p_frames) {
         }
     }
 
-    //create midi buffers
-	midi_input_buffer.resize(atom_inputs.size());
-	midi_output_buffer.resize(atom_outputs.size());
-
     // audio buffers
     channels = std::max(num_audio_out, num_audio_in);
     if (channels == 0) {
@@ -642,77 +720,8 @@ void LilvHost::deactivate() {
 }
 
 int LilvHost::perform(int p_frames) {
-    rt_deliver_worker_responses();
-
-	for (int i = 0; i < atom_inputs.size(); i++) {
-		AtomIn &atom_input = atom_inputs[i];
-        const uint32_t bytes = (uint32_t)(atom_input.buf.size() * sizeof(std::max_align_t));
-        lv2_atom_forge_set_buffer(&atom_input.forge, reinterpret_cast<uint8_t*>(atom_input.buf.data()), bytes);
-        LV2_Atom_Forge_Frame seq_frame;
-        lv2_atom_forge_sequence_head(&atom_input.forge, &seq_frame, urids.atom_FrameTime);
-
-        MidiEvent midi_event{};
-
-		while(read_midi_in(i, midi_event)) {
-			lv2_atom_forge_frame_time(&atom_input.forge, midi_event.frame);
-			lv2_atom_forge_atom(&atom_input.forge, midi_event.size, urids.midi_MidiEvent);
-			lv2_atom_forge_write(&atom_input.forge, midi_event.data, midi_event.size);
-		}
-
-		lv2_atom_forge_pop(&atom_input.forge, &seq_frame);
-
-        atom_input.seq = reinterpret_cast<LV2_Atom_Sequence*>(atom_input.buf.data());
-    }
-
-    // 3) Prepare Atom OUTPUTS: mark empty for this block
-	for (auto& atom_output : atom_outputs) {
-		const uint32_t buf_bytes = (uint32_t)(atom_output.buf.size() * sizeof(std::max_align_t));
-		const uint32_t body_capacity = (buf_bytes > sizeof(LV2_Atom)) ? (buf_bytes - (uint32_t)sizeof(LV2_Atom)) : 0u;
-
-		atom_output.seq->atom.type = urids.atom_Sequence;
-		atom_output.seq->atom.size = body_capacity;
-
-    	std::memset(LV2_ATOM_BODY(&atom_output.seq->atom), 0, body_capacity);
-
-		auto* body = (LV2_Atom_Sequence_Body*)LV2_ATOM_BODY(&atom_output.seq->atom);
-		body->unit = urids.atom_FrameTime;
-		body->pad  = 0;
-	}
-
-    // 4) Run DSP for this block
     lilv_instance_run(inst, p_frames);
-
-    //TODO: reading is not working right now... or is it?
-    // 5) Collect OUTPUT events → ABSOLUTE time → out ring
-	for (int i = 0; i < atom_outputs.size(); i++) {
-		AtomOut &atom_output = atom_outputs[i];
-        auto* seq = atom_output.seq;
-		if (seq->atom.size <= sizeof(LV2_Atom_Sequence_Body)) {
-			continue;
-		}
-		LV2_ATOM_SEQUENCE_FOREACH(seq, ev) {
-			if (ev->body.type != urids.midi_MidiEvent) {
-				continue;
-			}
-
-            const auto* body = (const uint8_t*)LV2_ATOM_BODY(&ev->body);
-			if (!body || ev->body.size == 0) {
-				continue;
-			}
-            MidiEvent midi_event{};
-            midi_event.frame = ev->time.frames;
-            midi_event.size  = std::min<uint32_t>(ev->body.size, 3u);
-			for (uint32_t j = 0; j < midi_event.size; ++j) {
-				midi_event.data[j] = body[j];
-			}
-			write_midi_out(i, midi_event);
-        }
-    }
-
-    // 6) Non-RT worker requests
-    non_rt_do_worker_requests();
-
-	return p_frames;
+    return p_frames;
 }
 
 int LilvHost::get_input_channel_count() {
@@ -731,58 +740,238 @@ int LilvHost::get_output_midi_count() {
     return atom_outputs.size();
 }
 
-float *LilvHost::get_input_channel_buffer(int p_channel) {
-    return audio_in_ptrs[p_channel];
-}
+bool LilvHost::run_offline(double duration_sec, double freq_hz, float gain, bool midi_enabled, int midi_note,
+                           const std::string &out_path) {
+    if (!inst) {
+        return false;
+    }
 
-float *LilvHost::get_output_channel_buffer(int p_channel) {
-    return audio_out_ptrs[p_channel];
-}
+    WavWriter writer;
+    if (!writer.open(out_path.c_str(), (int)sr, (int)get_output_channel_count())) {
+        std::cerr << "Failed to open output: " << out_path << "\n";
+        return false;
+    }
 
-void LilvHost::write_midi_in(int p_bus, const MidiEvent& p_midi_event) {
-	int event[MidiEvent::DATA_SIZE];
+    int block = 1024;
 
-	for (int i = 0; i < MidiEvent::DATA_SIZE; i++) {
-		event[i] = p_midi_event.data[i];
-	}
+    std::vector<float> zero_buf(block, 0.f);
+    std::vector<const float *> outs(get_output_channel_count(), zero_buf.data());
 
-	midi_input_buffer[p_bus].write_channel(event, MidiEvent::DATA_SIZE);
-}
+    const size_t total_frames = (size_t)(duration_sec * sr);
+    size_t done = 0;
+    double phase = 0.0;
+    const double twopi = 6.283185307179586;
+    size_t elapsed_frames = 0;
 
-bool LilvHost::read_midi_in(int p_bus, MidiEvent& p_midi_event) {
-	int event[MidiEvent::DATA_SIZE];
-	int read = midi_input_buffer[p_bus].read_channel(event, MidiEvent::DATA_SIZE);
+    while (done < total_frames) {
+        const uint32_t n = (uint32_t)std::min((size_t)block, total_frames - done);
+        const uint32_t frames_to_write = n;
 
-	if (read == MidiEvent::DATA_SIZE) {
-		for (int i = 0; i < MidiEvent::DATA_SIZE; i++) {
-			p_midi_event.data[i] = event[i];
-		}
-	}
+        rt_deliver_worker_responses();
 
-	return read > 0;
-}
+        if (get_input_channel_count() > 0) {
+            for (uint32_t i = 0; i < n; ++i) {
+                float s = gain * (float)std::sin(phase);
+                phase += twopi * freq_hz / sr;
+                for (uint32_t c = 0; c < get_input_channel_count(); ++c) {
+                    audio_in_ptrs[c][i] = s;
+                    //audio_in_ptrs[c][i] = 0;
+                }
+            }
+            if (n < block) {
+                for (uint32_t c = 0; c < channels; ++c) {
+                    std::memset(audio[c].data() + n, 0, (block - n) * sizeof(float));
+                }
+            }
+        }
 
-void LilvHost::write_midi_out(int p_bus, const MidiEvent& p_midi_event) {
-	int event[MidiEvent::DATA_SIZE];
+        for (int i = 0; i < get_input_midi_count(); i++) {
+        }
 
-	for (int i = 0; i < MidiEvent::DATA_SIZE; i++) {
-		event[i] = p_midi_event.data[i];
-	}
+        // forge atom input headers (+ MIDI if applicable)
+        for (auto &a : atom_inputs) {
+#if LILVHOST_DBG
+            const uint32_t forge_bytes = (uint32_t)(a.buf.size() * sizeof(std::max_align_t) - 16u * sizeof(uint32_t));
+#else
+            const uint32_t forge_bytes = (uint32_t)(a.buf.size() * sizeof(std::max_align_t));
+#endif
+            lv2_atom_forge_set_buffer(&a.forge, reinterpret_cast<uint8_t *>(a.buf.data()), forge_bytes);
 
-	midi_output_buffer[p_bus].write_channel(event, MidiEvent::DATA_SIZE);
-}
+            LV2_Atom_Forge_Frame seq_frame;
+            lv2_atom_forge_sequence_head(&a.forge, &seq_frame, urids.atom_FrameTime);
 
-bool LilvHost::read_midi_out(int p_bus, MidiEvent& p_midi_event) {
-	int event[MidiEvent::DATA_SIZE];
-	int read = midi_output_buffer[p_bus].read_channel(event, MidiEvent::DATA_SIZE);
+            if (midi_enabled && a.midi) {
+                bool send_on = (elapsed_frames == 0);
+                bool send_off = (elapsed_frames < (size_t)sr) && (elapsed_frames + n >= (size_t)sr);
 
-	if (read == MidiEvent::DATA_SIZE) {
-		for (int i = 0; i < MidiEvent::DATA_SIZE; i++) {
-			p_midi_event.data[i] = event[i];
-		}
-	}
+                auto write_midi = [&](uint32_t frame_off, uint8_t st, uint8_t d1, uint8_t d2) {
+                    uint8_t msg[3] = {st, d1, d2};
+                    lv2_atom_forge_frame_time(&a.forge, frame_off);
+                    lv2_atom_forge_atom(&a.forge, 3, urids.midi_MidiEvent);
+                    lv2_atom_forge_write(&a.forge, msg, 3);
+                };
 
-	return read > 0;
+                uint8_t ch = 0;
+                uint8_t note_on = 0x90 | (ch & 0x0F);
+                uint8_t note_off = 0x80 | (ch & 0x0F);
+
+                if (send_on) {
+                    write_midi(0, note_on, (uint8_t)midi_note, 100);
+                    write_midi(0, note_on, (uint8_t)(midi_note + 4), 100);
+                    write_midi(0, note_on, (uint8_t)(midi_note + 7), 100);
+                }
+                if (send_off) {
+                    uint32_t t = (uint32_t)((size_t)sr - elapsed_frames);
+                    if (t >= n) {
+                        t = n - 1;
+                    }
+                    write_midi(t, note_off, (uint8_t)midi_note, 0);
+                    write_midi(t, note_off, (uint8_t)(midi_note + 4), 0);
+                    write_midi(t, note_off, (uint8_t)(midi_note + 7), 0);
+                }
+            }
+
+            // keep typed pointer in sync (same buffer)
+            a.seq = reinterpret_cast<LV2_Atom_Sequence *>(a.buf.data());
+        }
+
+        // Reset atom outputs each block with full capacity (body bytes)
+        for (auto &o : atom_outputs) {
+#if LILVHOST_DBG
+            const uint32_t buf_bytes = (uint32_t)(o.buf.size() * sizeof(std::max_align_t) - 16u * sizeof(uint32_t));
+#else
+            const uint32_t buf_bytes = (uint32_t)(o.buf.size() * sizeof(std::max_align_t));
+#endif
+            const uint32_t body_capacity =
+                (buf_bytes > sizeof(LV2_Atom)) ? (buf_bytes - (uint32_t)sizeof(LV2_Atom)) : 0u;
+
+            o.seq->atom.type = urids.atom_Sequence;
+            o.seq->atom.size = body_capacity; // capacity!
+            auto *body = reinterpret_cast<LV2_Atom_Sequence_Body *>(LV2_ATOM_BODY(&o.seq->atom));
+            body->unit = urids.atom_FrameTime;
+            body->pad = 0;
+        }
+
+        // run
+        //try {
+            perform(block);
+        //} catch (const std::exception &e) {
+        //    std::cerr << "[host] Exception during run: " << e.what() << "\n";
+        //    writer.close();
+        //    return false;
+        //} catch (...) {
+        //    std::cerr << "[host] Unknown exception during run\n";
+        //    writer.close();
+        //    return false;
+        //}
+
+#if LILVHOST_DBG
+        // Debug guards: Atom outputs
+        for (auto &o : atom_outputs) {
+            // re-check end-of-buffer guard
+            const uint8_t *base = reinterpret_cast<const uint8_t *>(o.buf.data());
+            const size_t total_bytes = o.buf.size() * sizeof(std::max_align_t);
+            bool ok = true;
+            if (total_bytes >= 16u * sizeof(uint32_t)) {
+                const uint32_t *guard = reinterpret_cast<const uint32_t *>(base + total_bytes - 16u * sizeof(uint32_t));
+                for (uint32_t i2 = 0; i2 < 16u; ++i2) {
+                    if (guard[i2] != 0xA5A5A5A5u) {
+                        ok = false;
+                        break;
+                    }
+                }
+            }
+            if (!ok) {
+                std::cerr << "[AtomGuard] OVERFLOW on atom out port " << o.index << "\n";
+                writer.close();
+                return false;
+            }
+        }
+        // Debug guards: audio tails
+        for (uint32_t c = 0; c < channels; ++c) {
+            const uint32_t kTailGuardSamples = 64;
+            const float *g = audio[c].data() + block;
+            bool ok = true;
+            for (uint32_t i = 0; i < kTailGuardSamples; ++i) {
+                const uint32_t *p = reinterpret_cast<const uint32_t *>(g + i);
+                if (*p != 0x7FC00000u) {
+                    ok = false;
+                    break;
+                }
+            }
+            if (!ok) {
+                std::cerr << "[AudioGuard] OVERFLOW on audio buffer ch=" << c << " (plugin wrote past " << block
+                          << " samples)\n";
+                writer.close();
+                return false;
+            }
+        }
+        // Debug guards: CV tails
+        for (uint32_t i = 0; i < num_ports; ++i) {
+            const LilvPort *cport = lilv_plugin_get_port_by_index(plugin, i);
+            if (!lilv_port_is_a(plugin, cport, CV)) {
+                continue;
+            }
+            float *buf = cv_heap[i];
+            if (!buf) {
+                continue;
+            }
+            const uint32_t kTailGuardSamples = 64;
+            bool ok = true;
+            for (uint32_t g = 0; g < kTailGuardSamples; ++g) {
+                const uint32_t *p = reinterpret_cast<const uint32_t *>(buf + block + g);
+                if (*p != 0x7FC00000u) {
+                    ok = false;
+                    break;
+                }
+            }
+            if (!ok) {
+                std::cerr << "[CVGuard] OVERFLOW on CV port " << i << " (plugin wrote past " << block << " samples)\n";
+                writer.close();
+                return false;
+            }
+        }
+#endif
+
+        // (optional) dump atom outputs
+        /*
+        for (auto& o : atom_outputs_) {
+            auto* seq = o.seq;
+            if (seq->atom.size <= sizeof(LV2_Atom_Sequence_Body)) continue;
+            std::cout << "[events_out port " << o.index << "] size=" << seq->atom.size << "\n";
+            LV2_ATOM_SEQUENCE_FOREACH(seq, ev) {
+                std::cout << "  ev t=" << ev->time.frames << " type=" << ev->body.type << " size=" << ev->body.size;
+                if (ev->body.type == urids_.midi_MidiEvent && ev->body.size >= 1) {
+                    const uint8_t* b = (const uint8_t*)LV2_ATOM_BODY(&ev->body);
+                    std::cout << "  MIDI:";
+                    for (uint32_t i = 0; i < ev->body.size; ++i) std::cout << " " << std::hex << (int)b[i] << std::dec;
+                }
+                std::cout << "\n";
+            }
+        }
+        */
+
+        // write audio to wav
+        for (uint32_t c = 0; c < get_output_channel_count(); ++c) {
+            if (c < audio_out_ptrs.size() && audio_out_ptrs[c]) {
+                outs[c] = audio_out_ptrs[c];
+            } else if (c < channels && !audio.empty() && !audio[c].empty()) {
+                outs[c] = audio[c].data();
+            } else {
+                outs[c] = zero_buf.data();
+            }
+        }
+        if (frames_to_write > 0) {
+            writer.write_interleaved((const float *const *)outs.data(), frames_to_write, (int)get_output_channel_count());
+        }
+
+        non_rt_do_worker_requests();
+
+        done += n;
+        elapsed_frames += n;
+    }
+
+    return true;
 }
 
 // worker plumbing

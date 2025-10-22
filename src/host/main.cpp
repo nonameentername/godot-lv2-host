@@ -114,8 +114,6 @@ bool run_offline(LilvHost *lilv_host, double sr, double duration_sec, double fre
         const uint32_t n = (uint32_t)std::min((size_t)block, total_frames - done);
         const uint32_t frames_to_write = n;
 
-        lilv_host->rt_deliver_worker_responses();
-
         if (lilv_host->get_input_channel_count() > 0) {
             for (uint32_t i = 0; i < n; ++i) {
                 float s = gain * (float)std::sin(phase);
@@ -210,8 +208,6 @@ bool run_offline(LilvHost *lilv_host, double sr, double duration_sec, double fre
             writer.write_interleaved((const float *const *)outs.data(), frames_to_write, (int)lilv_host->get_output_channel_count());
         }
 
-        lilv_host->non_rt_do_worker_requests();
-
         done += n;
         elapsed_frames += n;
     }
@@ -239,7 +235,9 @@ int main(int argc, char **argv) {
 
     std::vector<std::pair<std::string, float>> cli_sets;
 
-	LilvHost *lilv_host = new LilvHost(sr, block, seq_capacity_hint);
+    LilvWorld *world = lilv_world_new();
+
+	LilvHost *lilv_host = new LilvHost(world, sr, block, seq_capacity_hint);
 
 	if (!lilv_host->load_world()) {
 		std::cerr << "Failed to create/load lilv world\n";
@@ -250,8 +248,9 @@ int main(int argc, char **argv) {
 		return 2;
 	}
 
-    //TODO: enable/disble
-    if (false) {
+    bool dump_plugin_info = true;
+
+    if (dump_plugin_info) {
         lilv_host->dump_plugin_features();
     }
 
@@ -260,8 +259,7 @@ int main(int argc, char **argv) {
 		return 3;
 	}
 
-    //TODO: enable/disable
-    if (false) {
+    if (dump_plugin_info) {
         lilv_host->dump_host_features();
     }
 
@@ -273,12 +271,32 @@ int main(int argc, char **argv) {
 		return 3;
 	}
 
-    //TODO: enable/disable
-    if (false) {
+    if (dump_plugin_info) {
         lilv_host->dump_ports();
     }
 
+	if (dump_plugin_info) {
+		std::cout << "input controls:" << std::endl;
+		for (int i = 0; i < lilv_host->get_input_control_count(); i++) {
+			const Control *control = lilv_host->get_input_control(i);
+			std::cout << "  symbol[" << i <<  "] = " << control->symbol << std::endl;
+			for (int j = 0; j < control->choices.size(); j++) {
+				std::cout << "    choice = " << control->choices[j].first << std::endl;
+			}
+		}
+
+		std::cout << "output controls:" << std::endl;
+		for (int i = 0; i < lilv_host->get_output_control_count(); i++) {
+			const Control *control = lilv_host->get_output_control(i);
+			std::cout << "  symbol[" << i <<  "] = " << control->symbol << std::endl;
+		}
+	}
+
 	lilv_host->activate();
+
+    //Testing changing the volume parameter using http://code.google.com/p/amsynth/amsynth
+    //lilv_host->set_input_control_value(14, 0.5);
+    //std::cout << "master_volume = " << lilv_host->get_input_control_value(14) << std::endl;
 
 	const bool ok = run_offline(lilv_host, sr, dur_sec, freq, gain, midi_enabled, midi_note, out_path);
 
@@ -287,6 +305,8 @@ int main(int argc, char **argv) {
 	if (!ok) {
 		return 4;
 	}
+
+    std::cout << "Number of output channels = " << lilv_host->get_output_channel_count() << std::endl;
 
 	std::cout << "Wrote " << out_path << "\n";
 

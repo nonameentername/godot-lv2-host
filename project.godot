@@ -11,7 +11,8 @@ config_version=5
 [application]
 
 config/name="GodotLilv"
-config/features=PackedStringArray("4.4", "GL Compatibility")
+run/main_scene="uid://n6csjkhxjfm2"
+config/features=PackedStringArray("4.5", "GL Compatibility")
 config/icon="res://icon.svg"
 
 [rendering]

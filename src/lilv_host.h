@@ -12,6 +12,8 @@
 #include <lv2/state/state.h>
 #include <lv2/urid/urid.h>
 #include <lv2/worker/worker.h>
+#include <lv2/units/units.h>
+#include <lv2/port-props/port-props.h>
 
 #include <lilv/lilv.h>
 
@@ -61,6 +63,21 @@ struct MidiEvent {
 	int frame{};
 	uint8_t data[DATA_SIZE];
 	int size = DATA_SIZE;
+};
+
+struct Control {
+    int index;
+    std::string symbol;
+    std::string name;
+    std::string unit;
+    int def;
+    int min;
+	int max;
+	bool logarithmic;
+	bool integer;
+	bool enumeration;
+	bool toggle;
+	std::vector<std::pair<std::string, float>> choices;
 };
 
 class LilvHost {
@@ -150,6 +167,9 @@ private:
     std::vector<LilvCircularBuffer<int>> midi_input_buffer;
     std::vector<LilvCircularBuffer<int>> midi_output_buffer;
 
+    std::vector<Control> control_inputs;
+    std::vector<Control> control_outputs;
+
     // CLI overrides
     std::vector<std::pair<std::string, float>> cli_sets;
 
@@ -177,7 +197,7 @@ private:
     static LV2_Worker_Status s_worker_respond(LV2_Worker_Respond_Handle, uint32_t size, const void *data);
 
 public:
-    LilvHost(double sr, int p_frames, uint32_t seq_bytes = 4096);
+    LilvHost(LilvWorld* p_world, double sr, int p_frames, uint32_t seq_bytes = 4096);
     ~LilvHost();
 
     LilvHost(const LilvHost &) = delete;
@@ -206,6 +226,9 @@ public:
     int get_input_midi_count();
     int get_output_midi_count();
 
+    int get_input_control_count();
+    int get_output_control_count();
+
     float *get_input_channel_buffer(int p_channel);
     float *get_output_channel_buffer(int p_channel);
 
@@ -214,6 +237,15 @@ public:
 
 	void write_midi_out(int p_bus, const MidiEvent& p_midi_event);
 	bool read_midi_out(int p_bus, MidiEvent& p_midi_event);
+
+    const Control *get_input_control(int p_index);
+    const Control *get_output_control(int p_index);
+
+    float get_input_control_value(int p_index);
+    float get_output_control_value(int p_index);
+
+    void set_input_control_value(int p_index, float p_value);
+    void set_output_control_value(int p_index, float p_value);
 
     void rt_deliver_worker_responses();
     void non_rt_do_worker_requests();

@@ -32,7 +32,7 @@ shell-ubuntu: docker-ubuntu
 
 ubuntu:
 	$(MAKE) shell-ubuntu SHELL_COMMAND='./platform/ubuntu/build_debug.sh'
-	#$(MAKE) shell-ubuntu SHELL_COMMAND='./platform/ubuntu/build_release.sh'
+	$(MAKE) shell-ubuntu SHELL_COMMAND='./platform/ubuntu/build_release.sh'
 
 clean:
 	rm -rf addons/lilv/bin modules/godot/bin vcpkg_installed

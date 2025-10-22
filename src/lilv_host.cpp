@@ -1,4 +1,5 @@
 #include "lilv_host.h"
+#include "lilv/lilv.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -99,8 +100,11 @@ static inline bool tail_guard_ok(const std::vector<float> &v) {
 #endif // LILVHOST_DBG
 
 // ===== LilvHost =====
-LilvHost::LilvHost(double sr, int p_frames, uint32_t seq_bytes)
+LilvHost::LilvHost(LilvWorld *p_world, double sr, int p_frames, uint32_t seq_bytes)
     : sr(sr), seq_bytes(seq_bytes) {
+
+    world = p_world;
+
     // Ensure a sane minimum capacity (bytes) for atom sequences
     const uint32_t min_header = (uint32_t)(sizeof(LV2_Atom) + sizeof(LV2_Atom_Sequence_Body));
     seq_capacity_hint = std::max<uint32_t>(seq_bytes, min_header + 256);
@@ -203,14 +207,16 @@ LilvHost::~LilvHost() {
         lilv_instance_free(inst);
         inst = nullptr;
     }
+    /*
     if (world) {
         lilv_world_free(world);
         world = nullptr;
     }
+    */
 }
 
 bool LilvHost::load_world() {
-    world = lilv_world_new();
+    //world = lilv_world_new();
     if (!world) {
         return false;
     }
@@ -624,6 +630,123 @@ bool LilvHost::prepare_ports_and_buffers(int p_frames) {
         }
     }
 
+    for (int i = 0; i < num_ports; i++) {
+        const LilvPort *port = lilv_plugin_get_port_by_index(plugin, i);
+        bool is_control = lilv_port_is_a(plugin, port, CONTROL);
+        bool is_input = lilv_port_is_a(plugin, port, INPUT);
+        bool is_output = lilv_port_is_a(plugin, port, OUTPUT);
+
+
+        if (is_control) {
+            std::string sym = port_symbol(port);
+
+            LilvNode *node_name = lilv_port_get_name(plugin, port);
+            std::string name = lilv_node_as_string(node_name);
+            lilv_node_free(node_name);
+
+            //TODO: What should the default be when they are not specified?
+            float def = 0;
+            float min = 0;
+            float max = 1;
+
+            LilvNode *def_node;
+            LilvNode *min_node;
+            LilvNode *max_node;
+            lilv_port_get_range(plugin, port, &def_node, &min_node, &max_node);
+
+            if (def_node) {
+                def = lilv_node_as_float(def_node);
+                lilv_node_free(def_node);
+            }
+
+            if (min_node) {
+                min = lilv_node_as_float(min_node);
+                lilv_node_free(min_node);
+            }
+
+            if (max_node) {
+                max = lilv_node_as_float(max_node);
+                lilv_node_free(max_node);
+            }
+
+			LilvNode* units_unit_uri = lilv_new_uri(world, LV2_UNITS__unit);
+			const LilvNodes* unit_values = lilv_port_get_value(plugin, port, units_unit_uri);
+			const LilvNode* unit_value = nullptr;
+
+			if (unit_values && lilv_nodes_size(unit_values) > 0) {
+				LILV_FOREACH(nodes, it, unit_values) {
+					unit_value = lilv_nodes_get(unit_values, it);
+					break;
+				}
+			}
+
+			std::string unit;
+
+			if (unit_value && lilv_node_is_uri(unit_value)) {
+				unit = lilv_node_as_uri(unit_value);
+				if (unit.rfind(LV2_UNITS_PREFIX) == 0) {
+					unit = unit.substr(strlen(LV2_UNITS_PREFIX));
+				}
+			}
+
+			lilv_node_free(units_unit_uri);
+
+			LilvNodes* props = lilv_port_get_properties(plugin, port);
+			LilvNode* log_uri = lilv_new_uri(world, LV2_PORT_PROPS__logarithmic);
+			bool is_logarithmic = lilv_nodes_contains(props, log_uri);
+
+			lilv_node_free(log_uri);
+
+			auto has_prop = [&](const char* uri){
+				LilvNode* n = lilv_new_uri(world, uri);
+				bool ok = props && lilv_nodes_contains(props, n);
+				lilv_node_free(n);
+				return ok;
+			};
+
+			bool is_integer = has_prop(LV2_CORE__integer);
+			bool is_enum    = has_prop(LV2_CORE__enumeration);
+			bool is_toggle  = has_prop(LV2_CORE__toggled);
+
+			// Scale points (for enums)
+			const LilvScalePoints* sps = lilv_port_get_scale_points(plugin, port);
+			std::vector<std::pair<std::string, float>> choices;
+			if (sps && lilv_scale_points_size(sps) > 0) {
+				LILV_FOREACH(scale_points, it, sps) {
+					const LilvScalePoint* sp = lilv_scale_points_get(sps, it);
+					const LilvNode* lab = lilv_scale_point_get_label(sp);
+					const LilvNode* val = lilv_scale_point_get_value(sp);
+					choices.emplace_back(lilv_node_as_string(lab), lilv_node_as_float(val));
+				}
+			}
+			lilv_nodes_free(props);
+
+            //TODO: Also provide the control properties and additional attributes
+
+            Control control;
+            control.index = i;
+            control.symbol = sym;
+            control.name = name;
+            control.unit = unit;
+            control.def = def;
+            control.min = min;
+            control.max = max;
+            control.logarithmic = is_logarithmic;
+            control.integer = is_integer;
+            control.enumeration = is_enum;
+			control.toggle = is_toggle;
+			control.choices = choices;
+
+            if (is_input) {
+                control_inputs.push_back(control);
+            }
+
+            if (is_output) {
+                control_outputs.push_back(control);
+            }
+        }
+    }
+
     return true;
 }
 
@@ -728,6 +851,14 @@ int LilvHost::get_output_midi_count() {
     return atom_outputs.size();
 }
 
+int LilvHost::get_input_control_count() {
+    return control_inputs.size();;
+}
+
+int LilvHost::get_output_control_count() {
+    return control_outputs.size();
+}
+
 float *LilvHost::get_input_channel_buffer(int p_channel) {
     return audio_in_ptrs[p_channel];
 }
@@ -754,6 +885,7 @@ bool LilvHost::read_midi_in(int p_bus, MidiEvent& p_midi_event) {
 		for (int i = 0; i < MidiEvent::DATA_SIZE; i++) {
 			p_midi_event.data[i] = event[i];
 		}
+        midi_input_buffer[p_bus].update_read_index(MidiEvent::DATA_SIZE);
 	}
 
 	return read > 0;
@@ -779,7 +911,53 @@ bool LilvHost::read_midi_out(int p_bus, MidiEvent& p_midi_event) {
 		}
 	}
 
+    midi_output_buffer[p_bus].update_read_index(MidiEvent::DATA_SIZE);
+
 	return read > 0;
+}
+
+const Control *LilvHost::get_input_control(int p_index) {
+    if (p_index < control_inputs.size()) {
+        return &control_inputs[p_index];
+    } else {
+        return NULL;
+    }
+}
+
+const Control *LilvHost::get_output_control(int p_index) {
+    if (p_index < control_outputs.size()) {
+        return &control_outputs[p_index];
+    } else {
+        return NULL;
+    }
+}
+
+float LilvHost::get_input_control_value(int p_index) {
+    if (p_index < control_inputs.size()) {
+        return *port_buffers[control_inputs[p_index].index];
+    } else {
+        return 0;
+    }
+}
+
+float LilvHost::get_output_control_value(int p_index) {
+    if (p_index < control_outputs.size()) {
+        return *port_buffers[control_outputs[p_index].index];
+    } else {
+        return 0;
+    }
+}
+
+void LilvHost::set_input_control_value(int p_index, float p_value) {
+    if (p_index < control_inputs.size()) {
+        *port_buffers[control_inputs[p_index].index] = p_value;
+    }
+}
+
+void LilvHost::set_output_control_value(int p_index, float p_value) {
+    if (p_index < control_outputs.size()) {
+        *port_buffers[control_outputs[p_index].index] = p_value;
+    }
 }
 
 // worker plumbing

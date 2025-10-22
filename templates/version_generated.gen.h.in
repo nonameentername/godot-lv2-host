@@ -1,2 +1,2 @@
-#define GODOT_DISTRHO_VERSION "${version}"
-#define GODOT_DISTRHO_BUILD "${build}"
+#define GODOT_LILV_VERSION "${version}"
+#define GODOT_LILV_BUILD "${build}"

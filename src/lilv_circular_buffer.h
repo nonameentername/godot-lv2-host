@@ -7,11 +7,8 @@ const int CIRCULAR_BUFFER_SIZE = 2048;
 
 template <typename T>
 struct AudioRingBuffer {
-    int input_write_index = 0;
-    int input_read_index = 0;
-
-    int output_write_index = 0;
-    int output_read_index = 0;
+    int write_index = 0;
+    int read_index = 0;
 
     T buffer[CIRCULAR_BUFFER_SIZE];
 };
@@ -32,6 +29,8 @@ public:
 
 	//TODO: rename to read_buffer or read
     int read_channel(T *p_buffer, int p_frames);
+
+    void update_read_index(int p_frames);
 };
 
 } // namespace godot

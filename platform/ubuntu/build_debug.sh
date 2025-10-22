@@ -18,7 +18,7 @@ cmake -DCMAKE_BUILD_TYPE=Debug \
 
 # build godot-lilv
 
-#cd $dir/addons/distrho/bin/linux/debug
+#cd $dir/addons/lilv/bin/linux/debug
 #make
 
 # build godot-lilv (gdextension)

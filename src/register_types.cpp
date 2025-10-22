@@ -8,10 +8,15 @@
 #include <godot_cpp/core/defs.hpp>
 #include <godot_cpp/godot.hpp>
 
-
 #include "lilv_server.h"
+#include "lilv_instance.h"
+#include "lilv_server_node.h"
+#include "lilv_layout.h"
+#include "audio_stream_lilv.h"
+#include "audio_stream_player_lilv.h"
 
-using namespace godot;
+
+namespace godot {
 
 static LilvServer *lilv_server;
 
@@ -20,7 +25,11 @@ void initialize_godot_lilv_module(ModuleInitializationLevel p_level) {
         return;
     }
 
-
+    ClassDB::register_class<AudioStreamLilv>();
+    ClassDB::register_class<AudioStreamPlaybackLilv>();
+    ClassDB::register_class<LilvLayout>();
+    ClassDB::register_class<LilvServerNode>();
+    ClassDB::register_class<LilvInstance>();
     ClassDB::register_class<LilvServer>();
 
     lilv_server = memnew(LilvServer);
@@ -50,5 +59,6 @@ GDExtensionBool GDE_EXPORT godot_lilv_library_init(GDExtensionInterfaceGetProcAd
     init_obj.set_minimum_library_initialization_level(MODULE_INITIALIZATION_LEVEL_SCENE);
 
     return init_obj.init();
+}
 }
 }

@@ -16,6 +16,7 @@ class Lv2Layout : public Resource {
         bool mute = false;
         bool bypass = false;
         float volume_db = 0.0f;
+        String uri;
 
         Lv2() {
         }

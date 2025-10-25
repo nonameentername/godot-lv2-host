@@ -29,6 +29,7 @@ private:
     int sfont_id;
 
     LilvWorld *world;
+    Lv2Host *lv2_host;
     HashMap<String, Lv2Instance *> lv2_map;
 
     bool thread_exited;
@@ -80,8 +81,8 @@ public:
     void set_lv2_volume_db(int p_lv2, float p_volume_db);
     float get_lv2_volume_db(int p_lv2) const;
 
-    void set_lv2_tab(int p_lv2, float p_tab);
-    int get_lv2_tab(int p_lv2) const;
+    void set_lv2_uri(int p_lv2, String p_uri);
+    String get_lv2_uri(int p_lv2) const;
 
     void set_lv2_solo(int p_lv2, bool p_enable);
     bool is_lv2_solo(int p_lv2) const;
@@ -104,6 +105,9 @@ public:
     void lock();
     void unlock();
     void finish();
+
+    TypedArray<String> get_plugins();
+    String get_plugin_name(String p_uri);
 
     Lv2Instance *get_lv2(const String &p_name);
     Lv2Instance *get_lv2_by_index(int p_index);

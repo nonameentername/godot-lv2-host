@@ -30,6 +30,11 @@ Lv2Server::Lv2Server() {
 }
 
 Lv2Server::~Lv2Server() {
+    if (lv2_host != NULL) {
+        delete lv2_host;
+        lv2_host = NULL;
+    }
+
     if (world) {
         lilv_world_free(world);
         world = nullptr;
@@ -74,6 +79,15 @@ void Lv2Server::add_property(String name, String default_value, GDExtensionVaria
 }
 
 void Lv2Server::initialize() {
+    int mix_rate = AudioServer::get_singleton()->get_mix_rate();
+    //TODO: update block size
+    lv2_host = new Lv2Host(world, mix_rate, 512);
+
+	if (!lv2_host->load_world()) {
+        //TODO: log to godot
+		std::cerr << "Failed to create/load lv2 world\n";
+	}
+
     add_property("audio/lv2/default_lv2_layout", "res://default_lv2_layout.tres",
                  GDEXTENSION_VARIANT_TYPE_STRING, PROPERTY_HINT_FILE);
     add_property("audio/lv2/use_resource_files", "true", GDEXTENSION_VARIANT_TYPE_BOOL, PROPERTY_HINT_NONE);
@@ -171,7 +185,7 @@ void Lv2Server::set_lv2_count(int p_count) {
         lv2_instances[i]->mute = false;
         lv2_instances[i]->bypass = false;
         lv2_instances[i]->volume_db = 0;
-        lv2_instances[i]->tab = 0;
+        lv2_instances[i]->uri = "";
 
         lv2_map[attempt] = lv2_instances[i];
 
@@ -243,7 +257,7 @@ void Lv2Server::add_lv2(int p_at_pos) {
     lv2_instance->mute = false;
     lv2_instance->bypass = false;
     lv2_instance->volume_db = 0;
-    lv2_instance->tab = 0;
+    lv2_instance->uri = "";
 
     if (!lv2_instance->is_connected("lv2_ready", Callable(this, "on_lv2_ready"))) {
         lv2_instance->connect("lv2_ready", Callable(this, "on_lv2_ready"), CONNECT_DEFERRED);
@@ -366,17 +380,17 @@ float Lv2Server::get_lv2_volume_db(int p_lv2) const {
     return lv2_instances[p_lv2]->volume_db;
 }
 
-void Lv2Server::set_lv2_tab(int p_lv2, float p_tab) {
+void Lv2Server::set_lv2_uri(int p_lv2, String p_uri) {
     ERR_FAIL_INDEX(p_lv2, lv2_instances.size());
 
     edited = true;
 
-    lv2_instances[p_lv2]->tab = p_tab;
+    lv2_instances[p_lv2]->uri = p_uri;
 }
 
-int Lv2Server::get_lv2_tab(int p_lv2) const {
-    ERR_FAIL_INDEX_V(p_lv2, lv2_instances.size(), 0);
-    return lv2_instances[p_lv2]->tab;
+String Lv2Server::get_lv2_uri(int p_lv2) const {
+    ERR_FAIL_INDEX_V(p_lv2, lv2_instances.size(), "");
+    return lv2_instances[p_lv2]->uri;
 }
 
 void Lv2Server::set_lv2_solo(int p_lv2, bool p_enable) {
@@ -492,6 +506,7 @@ void Lv2Server::set_lv2_layout(const Ref<Lv2Layout> &p_lv2_layout) {
         lv2->mute = p_lv2_layout->lv2s[i].mute;
         lv2->bypass = p_lv2_layout->lv2s[i].bypass;
         lv2->volume_db = p_lv2_layout->lv2s[i].volume_db;
+        lv2->uri = p_lv2_layout->lv2s[i].uri;
         lv2_map[lv2->lv2_name] = lv2;
         lv2_instances.write[i] = lv2;
 
@@ -520,6 +535,7 @@ Ref<Lv2Layout> Lv2Server::generate_lv2_layout() const {
         state->lv2s.write[i].solo = lv2_instances[i]->solo;
         state->lv2s.write[i].bypass = lv2_instances[i]->bypass;
         state->lv2s.write[i].volume_db = lv2_instances[i]->volume_db;
+        state->lv2s.write[i].uri = lv2_instances[i]->uri;
     }
 
     return state;
@@ -550,6 +566,30 @@ void Lv2Server::unlock() {
 void Lv2Server::finish() {
     exit_thread = true;
     thread->wait_to_finish();
+}
+
+TypedArray<String> Lv2Server::get_plugins() {
+    TypedArray<String> result;
+    std::vector<LilvPluginInfo> plugins_info = lv2_host->get_plugins_info(false);
+
+    for (int i = 0; i < plugins_info.size(); i++) {
+        result.push_back(plugins_info[i].uri.c_str());
+    }
+
+    return result;
+}
+
+String Lv2Server::get_plugin_name(String p_uri) {
+    //TODO: should this be cached?
+    std::vector<LilvPluginInfo> plugins_info = lv2_host->get_plugins_info(true);
+
+    for (int i = 0; i < plugins_info.size(); i++) {
+        if (p_uri == plugins_info[i].uri.c_str()) {
+            return plugins_info[i].name.c_str();
+        }
+    }
+
+    return "";
 }
 
 Lv2Instance *Lv2Server::get_lv2(const String &p_name) {
@@ -614,8 +654,8 @@ void Lv2Server::_bind_methods() {
                          &Lv2Server::set_lv2_volume_db);
     ClassDB::bind_method(D_METHOD("get_lv2_volume_db", "lv2_idx"), &Lv2Server::get_lv2_volume_db);
 
-    ClassDB::bind_method(D_METHOD("set_lv2_tab", "lv2_idx", "tab"), &Lv2Server::set_lv2_tab);
-    ClassDB::bind_method(D_METHOD("get_lv2_tab", "lv2_idx"), &Lv2Server::get_lv2_tab);
+    ClassDB::bind_method(D_METHOD("set_lv2_uri", "lv2_idx", "uri"), &Lv2Server::set_lv2_uri);
+    ClassDB::bind_method(D_METHOD("get_lv2_uri", "lv2_idx"), &Lv2Server::get_lv2_uri);
 
     ClassDB::bind_method(D_METHOD("set_lv2_solo", "lv2_idx", "enable"), &Lv2Server::set_lv2_solo);
     ClassDB::bind_method(D_METHOD("is_lv2_solo", "lv2_idx"), &Lv2Server::is_lv2_solo);
@@ -641,6 +681,10 @@ void Lv2Server::_bind_methods() {
     ClassDB::bind_method(D_METHOD("get_lv2", "lv2_name"), &Lv2Server::get_lv2);
 
     ClassDB::bind_method(D_METHOD("on_lv2_ready", "lv2_name"), &Lv2Server::on_lv2_ready);
+
+    ClassDB::bind_method(D_METHOD("get_plugins"), &Lv2Server::get_plugins);
+
+    ClassDB::bind_method(D_METHOD("get_plugin_name", "uri"), &Lv2Server::get_plugin_name);
 
     ADD_PROPERTY(PropertyInfo(Variant::INT, "lv2_count"), "set_lv2_count", "get_lv2_count");
 

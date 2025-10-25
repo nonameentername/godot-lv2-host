@@ -29,14 +29,13 @@ Lv2Instance::Lv2Instance() {
     mix_rate = AudioServer::get_singleton()->get_mix_rate();
 
     //TODO: update block size
-    lv2_host = new Lv2Host(world, mix_rate, 512);
+    int p_frames = 512;
+    lv2_host = new Lv2Host(world, mix_rate, p_frames);
 
 	if (!lv2_host->load_world()) {
         //TODO: log to godot
 		std::cerr << "Failed to create/load lv2 world\n";
 	}
-
-    configure_lv2();
 
     mutex.instantiate();
     semaphore.instantiate();
@@ -46,15 +45,13 @@ Lv2Instance::Lv2Instance() {
     for (int i = 0; i < BUFFER_FRAME_SIZE; i++) {
         temp_buffer.ptrw()[i] = 0;
     }
-    call_deferred("initialize");
 }
 
 void Lv2Instance::configure_lv2() {
+    lock();
 
-    std::string plugin_uri = "http://code.google.com/p/amsynth/amsynth";
-
-	if (!lv2_host->find_plugin(plugin_uri)) {
-		std::cerr << "Plugin not found: " << plugin_uri << "\n";
+	if (!lv2_host->find_plugin(std::string(uri.ascii()))) {
+		std::cerr << "Plugin not found: " << uri.ascii() << "\n";
 	}
 
 	if (!lv2_host->instantiate()) {
@@ -67,14 +64,15 @@ void Lv2Instance::configure_lv2() {
 	lv2_host->set_cli_control_overrides(cli_sets);
 
     //TODO: use the block from godot instead of 512
-	if (!lv2_host->prepare_ports_and_buffers(512)) {
+    int p_frames = 512;
+	if (!lv2_host->prepare_ports_and_buffers(p_frames)) {
 		std::cerr << "Failed to prepare/connect ports\n";
 	}
 
     for (int i = 0; i < lv2_host->get_input_control_count(); i++) {
-        const Control *control = lv2_host->get_input_control(i);
+        const LilvControl *control = lv2_host->get_input_control(i);
         Lv2Control *lv2_control = memnew(Lv2Control);
-        lv2_control->set_index(control->index);
+        lv2_control->set_index(i);
         lv2_control->set_symbol(control->symbol.c_str());
         lv2_control->set_name(control->name.c_str());
         lv2_control->set_unit(control->unit.c_str());
@@ -90,8 +88,41 @@ void Lv2Instance::configure_lv2() {
             lv2_control->set_choice(control->choices[j].first.c_str(), control->choices[j].second);
         }
 
-        controls.append(lv2_control);
+        input_controls.append(lv2_control);
     }
+
+    for (int i = 0; i < lv2_host->get_output_control_count(); i++) {
+        const LilvControl *control = lv2_host->get_output_control(i);
+        Lv2Control *lv2_control = memnew(Lv2Control);
+        lv2_control->set_index(i);
+        lv2_control->set_symbol(control->symbol.c_str());
+        lv2_control->set_name(control->name.c_str());
+        lv2_control->set_unit(control->unit.c_str());
+        lv2_control->set_default(control->def);
+        lv2_control->set_min(control->min);
+        lv2_control->set_max(control->max);
+        lv2_control->set_logarithmic(control->logarithmic);
+        lv2_control->set_integer(control->integer);
+        lv2_control->set_enumeration(control->enumeration);
+        lv2_control->set_toggle(control->toggle);
+
+        for (int j = 0; j < control->choices.size(); j++) {
+            lv2_control->set_choice(control->choices[j].first.c_str(), control->choices[j].second);
+        }
+
+        output_controls.append(lv2_control);
+    }
+
+    input_channels.resize(lv2_host->get_input_channel_count());
+    output_channels.resize(lv2_host->get_output_channel_count());
+
+    /*
+    for (int channel = 0; channel < output_channels.size(); channel++) {
+        output_channels[channel].buffer.write_channel(temp_buffer.ptrw(), p_frames);
+    }
+    */
+
+    unlock();
 }
 
 Lv2Instance::~Lv2Instance() {
@@ -104,16 +135,6 @@ Lv2Instance::~Lv2Instance() {
 void Lv2Instance::start() {
     if (lv2_host != NULL) {
         lv2_host->activate();
-
-        input_channels.resize(lv2_host->get_input_channel_count());
-        output_channels.resize(lv2_host->get_output_channel_count());
-
-        //TODO: this is a hack.  Figure out a nicer way to do this
-        //move the output read index back so the read and write index are not the same
-        int p_frames = 512;
-        for (int channel = 0; channel < lv2_host->get_output_channel_count(); channel++) {
-            output_channels[channel].buffer.update_read_index(CIRCULAR_BUFFER_SIZE - p_frames);
-        }
 
         initialized = true;
         start_thread();
@@ -156,8 +177,12 @@ void Lv2Instance::reset() {
 }
 
 void Lv2Instance::cleanup_channels() {
+    lock();
+
     input_channels.clear();
     output_channels.clear();
+
+    unlock();
 }
 
 int Lv2Instance::process_sample(AudioFrame *p_buffer, float p_rate, int p_frames) {
@@ -196,8 +221,7 @@ int Lv2Instance::process_sample(AudioFrame *p_buffer, float p_rate, int p_frames
         }
     }
 
-    //TODO: when should the read index be updated?? before or after peform?
-    for (int channel = 0; channel < lv2_host->get_output_channel_count(); channel++) {
+    for (int channel = 0; channel < output_channels.size(); channel++) {
         output_channels[channel].buffer.update_read_index(p_frames);
     }
 
@@ -220,7 +244,7 @@ void Lv2Instance::set_channel_sample(AudioFrame *p_buffer, float p_rate, int p_f
 
     if (has_left_channel) {
         for (int frame = 0; frame < p_frames; frame++) {
-            temp_buffer.write[frame] = p_buffer[frame].left;
+            temp_buffer.ptrw()[frame] = p_buffer[frame].left;
         }
 
         input_channels[left].write_channel(temp_buffer.ptrw(), p_frames);
@@ -228,7 +252,7 @@ void Lv2Instance::set_channel_sample(AudioFrame *p_buffer, float p_rate, int p_f
 
     if (has_right_channel) {
         for (int frame = 0; frame < p_frames; frame++) {
-            temp_buffer.write[frame] = p_buffer[frame].right;
+            temp_buffer.ptrw()[frame] = p_buffer[frame].right;
         }
 
         input_channels[right].write_channel(temp_buffer.ptrw(), p_frames);
@@ -325,8 +349,7 @@ void Lv2Instance::control_change(int midi_bus, int chan, int control, int value)
     lv2_host->write_midi_in(midi_bus, event);
 }
 
-//TODO: allow setting both the input and output controls
-void Lv2Instance::send_control_channel(int p_channel, float p_value) {
+void Lv2Instance::send_input_control_channel(int p_channel, float p_value) {
     if (!initialized) {
         return;
     }
@@ -334,8 +357,23 @@ void Lv2Instance::send_control_channel(int p_channel, float p_value) {
     lv2_host->set_input_control_value(p_channel, p_value);
 }
 
-//TODO: allow setting both the input and output controls
-float Lv2Instance::get_control_channel(int p_channel) {
+float Lv2Instance::get_input_control_channel(int p_channel) {
+    if (!initialized) {
+        return 0;
+    }
+
+    return lv2_host->get_input_control_value(p_channel);
+}
+
+void Lv2Instance::send_output_control_channel(int p_channel, float p_value) {
+    if (!initialized) {
+        return;
+    }
+
+    lv2_host->set_output_control_value(p_channel, p_value);
+}
+
+float Lv2Instance::get_output_control_channel(int p_channel) {
     if (!initialized) {
         return 0;
     }
@@ -373,13 +411,7 @@ void Lv2Instance::thread_func() {
         Vector<float> channel_peak;
         channel_peak.resize(output_channels.size());
         for (int i = 0; i < output_channels.size(); i++) {
-            channel_peak.write[i] = 0;
-        }
-
-        Vector<float> named_channel_peak;
-        named_channel_peak.resize(output_named_channels.size());
-        for (int i = 0; i < output_named_channels.size(); i++) {
-            named_channel_peak.write[i] = 0;
+            channel_peak.ptrw()[i] = 0;
         }
 
         for (int channel = 0; channel < lv2_host->get_input_channel_count(); channel++) {
@@ -412,22 +444,13 @@ void Lv2Instance::thread_func() {
                     float value = lv2_host->get_output_channel_buffer(channel)[frame] * volume;
                     float p = Math::abs(value);
                     if (p > channel_peak[channel]) {
-                        channel_peak.write[channel] = p;
+                        channel_peak.ptrw()[channel] = p;
                     }
-                    temp_buffer.write[frame] = value;
+                    temp_buffer.ptrw()[frame] = value;
                 }
                 output_channels[channel].buffer.write_channel(temp_buffer.ptr(), p_frames);
             }
         }
-
-        for (int channel = 0; channel < lv2_host->get_input_channel_count(); channel++) {
-            input_channels[channel].update_read_index(p_frames);
-        }
-
-        //TODO: when should the read index be updated?? before or after peform?
-        //for (int channel = 0; channel < lv2_host->get_output_channel_count(); channel++) {
-        //    output_channels[channel].buffer.update_read_index(p_frames);
-        //}
 
         for (int channel = 0; channel < output_channels.size(); channel++) {
             output_channels[channel].peak_volume = godot::UtilityFunctions::linear_to_db(channel_peak[channel] + AUDIO_PEAK_OFFSET);
@@ -478,6 +501,8 @@ void Lv2Instance::unlock() {
 }
 
 void Lv2Instance::initialize() {
+    configure_lv2();
+
     start();
 }
 
@@ -522,7 +547,11 @@ int Lv2Instance::get_output_midi_count() {
 }
 
 TypedArray<Lv2Control> Lv2Instance::get_input_controls() {
-    return controls;
+    return input_controls;
+}
+
+TypedArray<Lv2Control> Lv2Instance::get_output_controls() {
+    return output_controls;
 }
 
 double Lv2Instance::get_time_since_last_mix() {
@@ -558,8 +587,11 @@ void Lv2Instance::_bind_methods() {
     ClassDB::bind_method(D_METHOD("note_off", "chan", "key"), &Lv2Instance::note_off);
     ClassDB::bind_method(D_METHOD("control_change", "chan", "control", "key"), &Lv2Instance::control_change);
 
-    ClassDB::bind_method(D_METHOD("send_control_channel", "channel", "value"), &Lv2Instance::send_control_channel);
-    ClassDB::bind_method(D_METHOD("get_control_channel", "channel"), &Lv2Instance::get_control_channel);
+    ClassDB::bind_method(D_METHOD("send_input_control_channel", "channel", "value"), &Lv2Instance::send_input_control_channel);
+    ClassDB::bind_method(D_METHOD("get_input_control_channel", "channel"), &Lv2Instance::get_input_control_channel);
+
+    ClassDB::bind_method(D_METHOD("send_output_control_channel", "channel", "value"), &Lv2Instance::send_output_control_channel);
+    ClassDB::bind_method(D_METHOD("get_output_control_channel", "channel"), &Lv2Instance::get_output_control_channel);
 
     ClassDB::bind_method(D_METHOD("pitch_bend", "chan", "vel"), &Lv2Instance::pitch_bend);
 
@@ -567,6 +599,7 @@ void Lv2Instance::_bind_methods() {
     ClassDB::bind_method(D_METHOD("get_lv2_name"), &Lv2Instance::get_lv2_name);
 
     ClassDB::bind_method(D_METHOD("get_input_controls"), &Lv2Instance::get_input_controls);
+    ClassDB::bind_method(D_METHOD("get_output_controls"), &Lv2Instance::get_output_controls);
 
     ClassDB::add_property("Lv2Instance", PropertyInfo(Variant::STRING, "lv2_name"), "set_lv2_name",
                           "get_lv2_name");

@@ -243,12 +243,22 @@ int main(int argc, char **argv) {
 		std::cerr << "Failed to create/load lilv world\n";
 		return 2;
 	}
+
 	if (!lv2_host->find_plugin(plugin_uri)) {
 		std::cerr << "Plugin not found: " << plugin_uri << "\n";
 		return 2;
 	}
 
     bool dump_plugin_info = true;
+
+    if (dump_plugin_info) {
+        std::vector<LilvPluginInfo> plugins = lv2_host->get_plugins_info();
+
+        for (int i = 0; i < plugins.size(); i++) {
+            std::cout << "Found: " << plugins[i].name << " " << plugins[i].uri << std::endl;
+        }
+    }
+
 
     if (dump_plugin_info) {
         lv2_host->dump_plugin_features();
@@ -278,7 +288,7 @@ int main(int argc, char **argv) {
 	if (dump_plugin_info) {
 		std::cout << "input controls:" << std::endl;
 		for (int i = 0; i < lv2_host->get_input_control_count(); i++) {
-			const Control *control = lv2_host->get_input_control(i);
+			const LilvControl *control = lv2_host->get_input_control(i);
 			std::cout << "  symbol[" << i <<  "] = " << control->symbol << std::endl;
 			for (int j = 0; j < control->choices.size(); j++) {
 				std::cout << "    choice = " << control->choices[j].first << std::endl;
@@ -287,7 +297,7 @@ int main(int argc, char **argv) {
 
 		std::cout << "output controls:" << std::endl;
 		for (int i = 0; i < lv2_host->get_output_control_count(); i++) {
-			const Control *control = lv2_host->get_output_control(i);
+			const LilvControl *control = lv2_host->get_output_control(i);
 			std::cout << "  symbol[" << i <<  "] = " << control->symbol << std::endl;
 		}
 	}

@@ -24,6 +24,8 @@ bool Lv2Layout::_set(const StringName &p_name, const Variant &p_value) {
             lv2.bypass = p_value;
         } else if (what == "volume_db") {
             lv2.volume_db = p_value;
+        } else if (what == "uri") {
+            lv2.uri = p_value;
         } else {
             return false;
         }
@@ -56,6 +58,8 @@ bool Lv2Layout::_get(const StringName &p_name, Variant &r_ret) const {
             r_ret = lv2.bypass;
         } else if (what == "volume_db") {
             r_ret = lv2.volume_db;
+        } else if (what == "uri") {
+            r_ret = lv2.uri;
         } else {
             return false;
         }
@@ -78,9 +82,7 @@ void Lv2Layout::_get_property_list(List<PropertyInfo> *p_list) const {
                                        PROPERTY_USAGE_NO_EDITOR | PROPERTY_USAGE_INTERNAL));
         p_list->push_back(PropertyInfo(Variant::FLOAT, "lv2/" + itos(i) + "/volume_db", PROPERTY_HINT_NONE, "",
                                        PROPERTY_USAGE_NO_EDITOR | PROPERTY_USAGE_INTERNAL));
-        p_list->push_back(PropertyInfo(Variant::INT, "lv2/" + itos(i) + "/tab", PROPERTY_HINT_NONE, "",
-                                       PROPERTY_USAGE_NO_EDITOR | PROPERTY_USAGE_INTERNAL));
-        p_list->push_back(PropertyInfo(Variant::OBJECT, "lv2/" + itos(i) + "/script", PROPERTY_HINT_NONE, "",
+        p_list->push_back(PropertyInfo(Variant::STRING, "lv2/" + itos(i) + "/uri", PROPERTY_HINT_NONE, "",
                                        PROPERTY_USAGE_NO_EDITOR | PROPERTY_USAGE_INTERNAL));
     }
 }

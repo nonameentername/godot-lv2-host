@@ -65,7 +65,7 @@ struct MidiEvent {
 	int size = DATA_SIZE;
 };
 
-struct Control {
+struct LilvControl {
     int index;
     std::string symbol;
     std::string name;
@@ -78,6 +78,11 @@ struct Control {
 	bool enumeration;
 	bool toggle;
 	std::vector<std::pair<std::string, float>> choices;
+};
+
+struct LilvPluginInfo {
+    std::string uri;
+    std::string name;
 };
 
 class Lv2Host {
@@ -167,8 +172,8 @@ private:
     std::vector<Lv2CircularBuffer<int>> midi_input_buffer;
     std::vector<Lv2CircularBuffer<int>> midi_output_buffer;
 
-    std::vector<Control> control_inputs;
-    std::vector<Control> control_outputs;
+    std::vector<LilvControl> control_inputs;
+    std::vector<LilvControl> control_outputs;
 
     // CLI overrides
     std::vector<std::pair<std::string, float>> cli_sets;
@@ -204,6 +209,10 @@ public:
     Lv2Host &operator=(const Lv2Host &) = delete;
 
     bool load_world();
+
+    std::vector<LilvPluginInfo> get_plugins_info(bool include_name = false);
+    std::string get_plugin_name(std::string);
+
     bool find_plugin(const std::string &plugin_uri);
     bool instantiate();
     void set_cli_control_overrides(const std::vector<std::pair<std::string, float>> &name_value_pairs);
@@ -238,8 +247,8 @@ public:
 	void write_midi_out(int p_bus, const MidiEvent& p_midi_event);
 	bool read_midi_out(int p_bus, MidiEvent& p_midi_event);
 
-    const Control *get_input_control(int p_index);
-    const Control *get_output_control(int p_index);
+    const LilvControl *get_input_control(int p_index);
+    const LilvControl *get_output_control(int p_index);
 
     float get_input_control_value(int p_index);
     float get_output_control_value(int p_index);

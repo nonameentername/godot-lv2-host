@@ -30,7 +30,9 @@ public:
 	//TODO: rename to read_buffer or read
     int read_channel(T *p_buffer, int p_frames);
 
-    void update_read_index(int p_frames);
+    void set_read_index(int p_index);
+    void set_write_index(int p_index);
+    int update_read_index(int p_frames);
 };
 
 } // namespace godot

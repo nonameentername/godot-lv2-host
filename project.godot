@@ -10,10 +10,14 @@ config_version=5
 
 [application]
 
-config/name="GodotLilv"
+config/name="GodotLv2Host"
 run/main_scene="uid://n6csjkhxjfm2"
 config/features=PackedStringArray("4.5", "GL Compatibility")
 config/icon="res://icon.svg"
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/lv2-host/plugin.cfg")
 
 [rendering]
 

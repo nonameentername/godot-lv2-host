@@ -48,8 +48,9 @@ private:
     bool mute;
     bool bypass;
     float volume_db;
-    int tab;
+    String uri;
     bool initialized;
+    bool has_processed_audio;
     double mix_rate;
 
     bool thread_exited;
@@ -78,12 +79,10 @@ private:
     Channel output_left_channel;
     Channel output_right_channel;
 
-    Vector<Channel> output_named_channels;
-    HashMap<String, int> named_channels;
-
     HashMap<double, double> lv2_data;
 
-    TypedArray<Lv2Control> controls;
+    TypedArray<Lv2Control> input_controls;
+    TypedArray<Lv2Control> output_controls;
 
     void configure_lv2();
 
@@ -111,8 +110,11 @@ public:
     void note_off(int midi_bus, int chan, int key);
     void control_change(int midi_bus, int chan, int control, int value);
 
-    void send_control_channel(int p_channel, float p_value);
-    float get_control_channel(int p_channel);
+    void send_input_control_channel(int p_channel, float p_value);
+    float get_input_control_channel(int p_channel);
+
+    void send_output_control_channel(int p_channel, float p_value);
+    float get_output_control_channel(int p_channel);
 
     // val value (0-16383 with 8192 being center)
     void pitch_bend(int chan, int val);
@@ -132,6 +134,7 @@ public:
     int get_output_midi_count();
 
     TypedArray<Lv2Control> get_input_controls();
+    TypedArray<Lv2Control> get_output_controls();
 
     double get_time_since_last_mix();
     double get_time_to_next_mix();

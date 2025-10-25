@@ -235,6 +235,27 @@ bool Lv2Host::load_world() {
     return true;
 }
 
+std::vector<LilvPluginInfo> Lv2Host::get_plugins_info(bool include_name) {
+    std::vector<LilvPluginInfo> result;
+    LILV_FOREACH(plugins, i, plugins) {
+        const LilvPlugin *p = lilv_plugins_get(plugins, i);
+        const LilvNode *node = lilv_plugin_get_uri(p);
+
+        LilvPluginInfo plugin_info = LilvPluginInfo();
+        plugin_info.uri = lilv_node_as_string(node);
+
+        //including the name is super slow.
+        if (include_name) {
+            LilvNode *plugin_name = lilv_plugin_get_name(p);
+            plugin_info.name = lilv_node_as_string(plugin_name);
+            lilv_node_free(plugin_name);
+        }
+
+        result.push_back(plugin_info);
+    }
+    return result;
+}
+
 bool Lv2Host::find_plugin(const std::string &plugin_uri) {
     if (!world || !plugins) {
         return false;
@@ -723,7 +744,7 @@ bool Lv2Host::prepare_ports_and_buffers(int p_frames) {
 
             //TODO: Also provide the control properties and additional attributes
 
-            Control control;
+            LilvControl control;
             control.index = i;
             control.symbol = sym;
             control.name = name;
@@ -916,7 +937,7 @@ bool Lv2Host::read_midi_out(int p_bus, MidiEvent& p_midi_event) {
 	return read > 0;
 }
 
-const Control *Lv2Host::get_input_control(int p_index) {
+const LilvControl *Lv2Host::get_input_control(int p_index) {
     if (p_index < control_inputs.size()) {
         return &control_inputs[p_index];
     } else {
@@ -924,7 +945,7 @@ const Control *Lv2Host::get_input_control(int p_index) {
     }
 }
 
-const Control *Lv2Host::get_output_control(int p_index) {
+const LilvControl *Lv2Host::get_output_control(int p_index) {
     if (p_index < control_outputs.size()) {
         return &control_outputs[p_index];
     } else {

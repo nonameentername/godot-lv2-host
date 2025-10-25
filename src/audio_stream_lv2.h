@@ -1,7 +1,7 @@
-#ifndef AUDIO_STREAM_LILV_H
-#define AUDIO_STREAM_LILV_H
+#ifndef AUDIO_STREAM_LV2_H
+#define AUDIO_STREAM_LV2_H
 
-#include "lilv_instance.h"
+#include "lv2_instance.h"
 
 #include <godot_cpp/classes/audio_frame.hpp>
 #include <godot_cpp/classes/audio_stream.hpp>
@@ -11,17 +11,17 @@
 
 namespace godot {
 
-class AudioStreamLilv : public AudioStream {
-    GDCLASS(AudioStreamLilv, AudioStream)
+class AudioStreamLv2 : public AudioStream {
+    GDCLASS(AudioStreamLv2, AudioStream)
 
 private:
-    friend class AudioStreamPlaybackLilv;
-    String lilv_name;
+    friend class AudioStreamPlaybackLv2;
+    String lv2_name;
     bool active;
 
-    LilvInstance *get_lilv_instance();
-    void lilv_layout_changed();
-    void lilv_ready(String lilv_name);
+    Lv2Instance *get_lv2_instance();
+    void lv2_layout_changed();
+    void lv2_ready(String lv2_name);
 
 public:
     virtual String get_stream_name() const;
@@ -29,12 +29,12 @@ public:
 
     int process_sample(AudioFrame *p_buffer, float p_rate, int p_frames);
 
-    AudioStreamLilv();
-    ~AudioStreamLilv();
+    AudioStreamLv2();
+    ~AudioStreamLv2();
 
     virtual Ref<AudioStreamPlayback> _instantiate_playback() const override;
-    void set_lilv_name(const String &name);
-    const String &get_lilv_name() const;
+    void set_lv2_name(const String &name);
+    const String &get_lv2_name() const;
 
     void set_active(bool active);
     bool is_active();

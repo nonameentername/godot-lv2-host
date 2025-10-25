@@ -1,5 +1,5 @@
-#ifndef LILV_CIRCULAR_BUFFER_H
-#define LILV_CIRCULAR_BUFFER_H
+#ifndef LV2_CIRCULAR_BUFFER_H
+#define LV2_CIRCULAR_BUFFER_H
 
 namespace godot {
 
@@ -15,14 +15,14 @@ struct AudioRingBuffer {
 
 
 template <typename T>
-class LilvCircularBuffer {
+class Lv2CircularBuffer {
 
 private:
     AudioRingBuffer<T> *audio_buffer;
 
 public:
-    LilvCircularBuffer();
-    ~LilvCircularBuffer();
+    Lv2CircularBuffer();
+    ~Lv2CircularBuffer();
 
 	//TODO: rename to write_buffer or write
     void write_channel(const T *p_buffer, int p_frames);

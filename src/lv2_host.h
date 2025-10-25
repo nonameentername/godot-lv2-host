@@ -1,5 +1,5 @@
-#ifndef LILV_HOST_H
-#define LILV_HOST_H
+#ifndef LV2_HOST_H
+#define LV2_HOST_H
 
 #include <lv2/atom/atom.h>
 #include <lv2/atom/forge.h>
@@ -24,7 +24,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "lilv_circular_buffer.h"
+#include "lv2_circular_buffer.h"
 
 namespace godot {
 
@@ -80,7 +80,7 @@ struct Control {
 	std::vector<std::pair<std::string, float>> choices;
 };
 
-class LilvHost {
+class Lv2Host {
 private:
     // lv2:state helpers
     static char *s_state_abs_path(LV2_State_Map_Path_Handle, const char *p);
@@ -164,8 +164,8 @@ private:
     uint32_t seq_capacity_hint{}; // BYTES
 
     // Midi buffers
-    std::vector<LilvCircularBuffer<int>> midi_input_buffer;
-    std::vector<LilvCircularBuffer<int>> midi_output_buffer;
+    std::vector<Lv2CircularBuffer<int>> midi_input_buffer;
+    std::vector<Lv2CircularBuffer<int>> midi_output_buffer;
 
     std::vector<Control> control_inputs;
     std::vector<Control> control_outputs;
@@ -197,11 +197,11 @@ private:
     static LV2_Worker_Status s_worker_respond(LV2_Worker_Respond_Handle, uint32_t size, const void *data);
 
 public:
-    LilvHost(LilvWorld* p_world, double sr, int p_frames, uint32_t seq_bytes = 4096);
-    ~LilvHost();
+    Lv2Host(LilvWorld* p_world, double sr, int p_frames, uint32_t seq_bytes = 4096);
+    ~Lv2Host();
 
-    LilvHost(const LilvHost &) = delete;
-    LilvHost &operator=(const LilvHost &) = delete;
+    Lv2Host(const Lv2Host &) = delete;
+    Lv2Host &operator=(const Lv2Host &) = delete;
 
     bool load_world();
     bool find_plugin(const std::string &plugin_uri);

@@ -1,27 +1,27 @@
-#ifndef LILV_LAYOUT_H
-#define LILV_LAYOUT_H
+#ifndef LV2_LAYOUT_H
+#define LV2_LAYOUT_H
 
 #include <godot_cpp/classes/resource.hpp>
 #include <godot_cpp/templates/vector.hpp>
 
 namespace godot {
 
-class LilvLayout : public Resource {
-    GDCLASS(LilvLayout, Resource);
-    friend class LilvServer;
+class Lv2Layout : public Resource {
+    GDCLASS(Lv2Layout, Resource);
+    friend class Lv2Server;
 
-    struct Lilv {
+    struct Lv2 {
         String name;
         bool solo = false;
         bool mute = false;
         bool bypass = false;
         float volume_db = 0.0f;
 
-        Lilv() {
+        Lv2() {
         }
     };
 
-    Vector<Lilv> lilvs;
+    Vector<Lv2> lv2s;
 
 protected:
     static void _bind_methods();
@@ -31,7 +31,7 @@ protected:
     void _get_property_list(List<PropertyInfo> *p_list) const;
 
 public:
-    LilvLayout();
+    Lv2Layout();
 };
 
 } // namespace godot

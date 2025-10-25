@@ -1,4 +1,4 @@
-#include "lilv_host.h"
+#include "lv2_host.h"
 #include "lilv/lilv.h"
 #include <algorithm>
 #include <cmath>
@@ -21,17 +21,17 @@ static inline std::string to_string_safe(const char *s, const char *fb = "") {
 }
 
 // ============================================================
-// Optional debug guards (enable with -DLILVHOST_DEBUG_GUARDS)
+// Optional debug guards (enable with -DLV2HOST_DEBUG_GUARDS)
 // ============================================================
-#ifdef LILVHOST_DEBUG_GUARDS
-#define LILVHOST_DBG 1
+#ifdef LV2HOST_DEBUG_GUARDS
+#define LV2HOST_DBG 1
 #else
-#define LILVHOST_DBG 0
+#define LV2HOST_DBG 0
 #endif
 
 
 // ===================== Canary helpers (debug only) =====================
-#if LILVHOST_DBG
+#if LV2HOST_DBG
 namespace {
 // ---- Atom redzone (bytes, placed at end of vector) ----
 constexpr uint32_t kGuardPattern = 0xA5A5A5A5u;
@@ -97,10 +97,10 @@ static inline bool tail_guard_ok(const std::vector<float> &v) {
     return true;
 }
 } // namespace
-#endif // LILVHOST_DBG
+#endif // LV2HOST_DBG
 
-// ===== LilvHost =====
-LilvHost::LilvHost(LilvWorld *p_world, double sr, int p_frames, uint32_t seq_bytes)
+// ===== Lv2Host =====
+Lv2Host::Lv2Host(LilvWorld *p_world, double sr, int p_frames, uint32_t seq_bytes)
     : sr(sr), seq_bytes(seq_bytes) {
 
     world = p_world;
@@ -111,11 +111,11 @@ LilvHost::LilvHost(LilvWorld *p_world, double sr, int p_frames, uint32_t seq_byt
 
     // URID map/unmap
     map.handle = this;
-    map.map = &LilvHost::s_map_cb;
+    map.map = &Lv2Host::s_map_cb;
     feat_map.URI = LV2_URID__map;
     feat_map.data = &map;
     unmap.handle = this;
-    unmap.unmap = &LilvHost::s_unmap_cb;
+    unmap.unmap = &Lv2Host::s_unmap_cb;
     feat_unmap.URI = LV2_URID__unmap;
     feat_unmap.data = &unmap;
 
@@ -129,25 +129,25 @@ LilvHost::LilvHost(LilvWorld *p_world, double sr, int p_frames, uint32_t seq_byt
 
     // lv2:log
     log.handle = this;
-    log.printf = &LilvHost::s_log_printf;
-    log.vprintf = &LilvHost::s_log_vprintf;
+    log.printf = &Lv2Host::s_log_printf;
+    log.vprintf = &Lv2Host::s_log_vprintf;
     feat_log.URI = LV2_LOG__log;
     feat_log.data = &log;
 
     // lv2:worker proxy
     worker.sched.handle = &worker;
-    worker.sched.schedule_work = &LilvHost::s_schedule_work;
+    worker.sched.schedule_work = &Lv2Host::s_schedule_work;
     feat_worker.URI = LV2_WORKER__schedule;
     feat_worker.data = &worker.sched;
 
     // lv2:state helpers
     state_map.handle = this;
-    state_map.absolute_path = &LilvHost::s_state_abs_path;
-    state_map.abstract_path = &LilvHost::s_state_abspath_to_abstract;
+    state_map.absolute_path = &Lv2Host::s_state_abs_path;
+    state_map.abstract_path = &Lv2Host::s_state_abspath_to_abstract;
     state_make.handle = this;
-    state_make.path = &LilvHost::s_state_make_path;
+    state_make.path = &Lv2Host::s_state_make_path;
     state_free.handle = this;
-    state_free.free_path = &LilvHost::s_state_free_path;
+    state_free.free_path = &Lv2Host::s_state_free_path;
     feat_state_map.URI = LV2_STATE__mapPath;
     feat_state_map.data = &state_map;
     feat_state_make.URI = LV2_STATE__makePath;
@@ -170,7 +170,7 @@ LilvHost::LilvHost(LilvWorld *p_world, double sr, int p_frames, uint32_t seq_byt
     features[11] = nullptr;
 }
 
-LilvHost::~LilvHost() {
+Lv2Host::~Lv2Host() {
     if (inst) {
         for (uint32_t i = 0; i < num_ports; ++i) {
             lilv_instance_connect_port(inst, i, nullptr);
@@ -215,7 +215,7 @@ LilvHost::~LilvHost() {
     */
 }
 
-bool LilvHost::load_world() {
+bool Lv2Host::load_world() {
     //world = lilv_world_new();
     if (!world) {
         return false;
@@ -235,7 +235,7 @@ bool LilvHost::load_world() {
     return true;
 }
 
-bool LilvHost::find_plugin(const std::string &plugin_uri) {
+bool Lv2Host::find_plugin(const std::string &plugin_uri) {
     if (!world || !plugins) {
         return false;
     }
@@ -263,7 +263,7 @@ bool LilvHost::find_plugin(const std::string &plugin_uri) {
     return true;
 }
 
-bool LilvHost::instantiate() {
+bool Lv2Host::instantiate() {
     if (!plugin) {
         return false;
     }
@@ -277,7 +277,7 @@ bool LilvHost::instantiate() {
     return true;
 }
 
-void LilvHost::wire_worker_interface() {
+void Lv2Host::wire_worker_interface() {
     if (!desc || !desc->extension_data) {
         return;
     }
@@ -286,11 +286,11 @@ void LilvHost::wire_worker_interface() {
     worker.handle = lilv_instance_get_handle(inst);
 }
 
-void LilvHost::set_cli_control_overrides(const std::vector<std::pair<std::string, float>> &nvp) {
+void Lv2Host::set_cli_control_overrides(const std::vector<std::pair<std::string, float>> &nvp) {
     cli_sets = nvp;
 }
 
-void LilvHost::dump_plugin_features() const {
+void Lv2Host::dump_plugin_features() const {
     if (!plugin) {
         return;
     }
@@ -309,7 +309,7 @@ void LilvHost::dump_plugin_features() const {
     print_nodes("optionalFeature", lilv_plugin_get_optional_features(plugin));
 }
 
-void LilvHost::dump_host_features() const {
+void Lv2Host::dump_host_features() const {
     std::cout << "host features passed:\n";
     for (int i = 0; features[i]; ++i) {
         std::cout << "  - " << cstr_or(features[i]->URI, "(null)") << (features[i]->data ? " (data:yes)" : " (data:no)")
@@ -317,7 +317,7 @@ void LilvHost::dump_host_features() const {
     }
 }
 
-void LilvHost::dump_ports() const {
+void Lv2Host::dump_ports() const {
     if (!plugin) {
         return;
     }
@@ -337,13 +337,13 @@ void LilvHost::dump_ports() const {
     }
 }
 
-std::string LilvHost::port_symbol(const LilvPort *cport) const {
+std::string Lv2Host::port_symbol(const LilvPort *cport) const {
     const LilvNode *sym = lilv_port_get_symbol(plugin, cport);
     const char *s = sym ? lilv_node_as_string(sym) : nullptr;
     return to_string_safe(s);
 }
 
-bool LilvHost::prepare_ports_and_buffers(int p_frames) {
+bool Lv2Host::prepare_ports_and_buffers(int p_frames) {
     if (!plugin || !inst) {
         return false;
     }
@@ -446,7 +446,7 @@ bool LilvHost::prepare_ports_and_buffers(int p_frames) {
                 a.index = i;
                 a.midi = supports_midi;
 
-#if LILVHOST_DBG
+#if LV2HOST_DBG
                 const size_t words = ([](uint32_t bytes) {
                     const size_t W = sizeof(std::max_align_t);
                     const size_t bytes_with_guard = (size_t)bytes + 16u * sizeof(uint32_t);
@@ -495,7 +495,7 @@ bool LilvHost::prepare_ports_and_buffers(int p_frames) {
                 AtomOut o{};
                 o.index = i;
 
-#if LILVHOST_DBG
+#if LV2HOST_DBG
                 const size_t words = ([](uint32_t bytes) {
                     const size_t W = sizeof(std::max_align_t);
                     const size_t bytes_with_guard = (size_t)bytes + 16u * sizeof(uint32_t);
@@ -546,7 +546,7 @@ bool LilvHost::prepare_ports_and_buffers(int p_frames) {
         channels = 1;
     }
     audio.assign(channels, std::vector<float>(p_frames, 0.f));
-#if LILVHOST_DBG
+#if LV2HOST_DBG
     // add tail guards (debug only)
     for (auto &v : audio) {
         const uint32_t kTailGuardSamples = 64;
@@ -600,7 +600,7 @@ bool LilvHost::prepare_ports_and_buffers(int p_frames) {
             continue;
         }
         if (is_cv) {
-#if LILVHOST_DBG
+#if LV2HOST_DBG
             // allocate block + guard
             const uint32_t kTailGuardSamples = 64;
             float *buf = new float[block + kTailGuardSamples]();
@@ -750,18 +750,18 @@ bool LilvHost::prepare_ports_and_buffers(int p_frames) {
     return true;
 }
 
-void LilvHost::activate() {
+void Lv2Host::activate() {
     if (inst) {
         lilv_instance_activate(inst);
     }
 }
-void LilvHost::deactivate() {
+void Lv2Host::deactivate() {
     if (inst) {
         lilv_instance_deactivate(inst);
     }
 }
 
-int LilvHost::perform(int p_frames) {
+int Lv2Host::perform(int p_frames) {
     rt_deliver_worker_responses();
 
 	for (int i = 0; i < atom_inputs.size(); i++) {
@@ -835,39 +835,39 @@ int LilvHost::perform(int p_frames) {
 	return p_frames;
 }
 
-int LilvHost::get_input_channel_count() {
+int Lv2Host::get_input_channel_count() {
     return num_audio_in;
 }
 
-int LilvHost::get_output_channel_count() {
+int Lv2Host::get_output_channel_count() {
     return num_audio_out;
 }
 
-int LilvHost::get_input_midi_count() {
+int Lv2Host::get_input_midi_count() {
     return atom_inputs.size();;
 }
 
-int LilvHost::get_output_midi_count() {
+int Lv2Host::get_output_midi_count() {
     return atom_outputs.size();
 }
 
-int LilvHost::get_input_control_count() {
+int Lv2Host::get_input_control_count() {
     return control_inputs.size();;
 }
 
-int LilvHost::get_output_control_count() {
+int Lv2Host::get_output_control_count() {
     return control_outputs.size();
 }
 
-float *LilvHost::get_input_channel_buffer(int p_channel) {
+float *Lv2Host::get_input_channel_buffer(int p_channel) {
     return audio_in_ptrs[p_channel];
 }
 
-float *LilvHost::get_output_channel_buffer(int p_channel) {
+float *Lv2Host::get_output_channel_buffer(int p_channel) {
     return audio_out_ptrs[p_channel];
 }
 
-void LilvHost::write_midi_in(int p_bus, const MidiEvent& p_midi_event) {
+void Lv2Host::write_midi_in(int p_bus, const MidiEvent& p_midi_event) {
 	int event[MidiEvent::DATA_SIZE];
 
 	for (int i = 0; i < MidiEvent::DATA_SIZE; i++) {
@@ -877,7 +877,7 @@ void LilvHost::write_midi_in(int p_bus, const MidiEvent& p_midi_event) {
 	midi_input_buffer[p_bus].write_channel(event, MidiEvent::DATA_SIZE);
 }
 
-bool LilvHost::read_midi_in(int p_bus, MidiEvent& p_midi_event) {
+bool Lv2Host::read_midi_in(int p_bus, MidiEvent& p_midi_event) {
 	int event[MidiEvent::DATA_SIZE];
 	int read = midi_input_buffer[p_bus].read_channel(event, MidiEvent::DATA_SIZE);
 
@@ -891,7 +891,7 @@ bool LilvHost::read_midi_in(int p_bus, MidiEvent& p_midi_event) {
 	return read > 0;
 }
 
-void LilvHost::write_midi_out(int p_bus, const MidiEvent& p_midi_event) {
+void Lv2Host::write_midi_out(int p_bus, const MidiEvent& p_midi_event) {
 	int event[MidiEvent::DATA_SIZE];
 
 	for (int i = 0; i < MidiEvent::DATA_SIZE; i++) {
@@ -901,7 +901,7 @@ void LilvHost::write_midi_out(int p_bus, const MidiEvent& p_midi_event) {
 	midi_output_buffer[p_bus].write_channel(event, MidiEvent::DATA_SIZE);
 }
 
-bool LilvHost::read_midi_out(int p_bus, MidiEvent& p_midi_event) {
+bool Lv2Host::read_midi_out(int p_bus, MidiEvent& p_midi_event) {
 	int event[MidiEvent::DATA_SIZE];
 	int read = midi_output_buffer[p_bus].read_channel(event, MidiEvent::DATA_SIZE);
 
@@ -916,7 +916,7 @@ bool LilvHost::read_midi_out(int p_bus, MidiEvent& p_midi_event) {
 	return read > 0;
 }
 
-const Control *LilvHost::get_input_control(int p_index) {
+const Control *Lv2Host::get_input_control(int p_index) {
     if (p_index < control_inputs.size()) {
         return &control_inputs[p_index];
     } else {
@@ -924,7 +924,7 @@ const Control *LilvHost::get_input_control(int p_index) {
     }
 }
 
-const Control *LilvHost::get_output_control(int p_index) {
+const Control *Lv2Host::get_output_control(int p_index) {
     if (p_index < control_outputs.size()) {
         return &control_outputs[p_index];
     } else {
@@ -932,7 +932,7 @@ const Control *LilvHost::get_output_control(int p_index) {
     }
 }
 
-float LilvHost::get_input_control_value(int p_index) {
+float Lv2Host::get_input_control_value(int p_index) {
     if (p_index < control_inputs.size()) {
         return *port_buffers[control_inputs[p_index].index];
     } else {
@@ -940,7 +940,7 @@ float LilvHost::get_input_control_value(int p_index) {
     }
 }
 
-float LilvHost::get_output_control_value(int p_index) {
+float Lv2Host::get_output_control_value(int p_index) {
     if (p_index < control_outputs.size()) {
         return *port_buffers[control_outputs[p_index].index];
     } else {
@@ -948,20 +948,20 @@ float LilvHost::get_output_control_value(int p_index) {
     }
 }
 
-void LilvHost::set_input_control_value(int p_index, float p_value) {
+void Lv2Host::set_input_control_value(int p_index, float p_value) {
     if (p_index < control_inputs.size()) {
         *port_buffers[control_inputs[p_index].index] = p_value;
     }
 }
 
-void LilvHost::set_output_control_value(int p_index, float p_value) {
+void Lv2Host::set_output_control_value(int p_index, float p_value) {
     if (p_index < control_outputs.size()) {
         *port_buffers[control_outputs[p_index].index] = p_value;
     }
 }
 
 // worker plumbing
-void LilvHost::rt_deliver_worker_responses() {
+void Lv2Host::rt_deliver_worker_responses() {
     if (!worker.iface || !worker.handle) {
         return;
     }
@@ -973,22 +973,22 @@ void LilvHost::rt_deliver_worker_responses() {
         worker.iface->end_run(worker.handle);
     }
 }
-void LilvHost::non_rt_do_worker_requests() {
+void Lv2Host::non_rt_do_worker_requests() {
     if (!worker.iface || !worker.handle) {
         return;
     }
     for (auto &q : worker.requests) {
-        worker.iface->work(worker.handle, &LilvHost::s_worker_respond, &worker, (uint32_t)q.size(), q.data());
+        worker.iface->work(worker.handle, &Lv2Host::s_worker_respond, &worker, (uint32_t)q.size(), q.data());
     }
     worker.requests.clear();
 }
-LV2_Worker_Status LilvHost::s_schedule_work(LV2_Worker_Schedule_Handle h, uint32_t size, const void *data) {
+LV2_Worker_Status Lv2Host::s_schedule_work(LV2_Worker_Schedule_Handle h, uint32_t size, const void *data) {
     auto *ws = static_cast<WorkerState *>(h);
     const uint8_t *b = static_cast<const uint8_t *>(data);
     ws->requests.emplace_back(b, b + size);
     return LV2_WORKER_SUCCESS;
 }
-LV2_Worker_Status LilvHost::s_worker_respond(LV2_Worker_Respond_Handle h, uint32_t size, const void *data) {
+LV2_Worker_Status Lv2Host::s_worker_respond(LV2_Worker_Respond_Handle h, uint32_t size, const void *data) {
     auto *ws = static_cast<WorkerState *>(h);
     const uint8_t *b = static_cast<const uint8_t *>(data);
     ws->responses.emplace_back(b, b + size);
@@ -996,15 +996,15 @@ LV2_Worker_Status LilvHost::s_worker_respond(LV2_Worker_Respond_Handle h, uint32
 }
 
 // URID map/unmap
-LV2_URID LilvHost::s_map_cb(LV2_URID_Map_Handle h, const char *uri) {
-    return static_cast<LilvHost *>(h)->map_uri(uri);
+LV2_URID Lv2Host::s_map_cb(LV2_URID_Map_Handle h, const char *uri) {
+    return static_cast<Lv2Host *>(h)->map_uri(uri);
 }
-const char *LilvHost::s_unmap_cb(LV2_URID_Unmap_Handle h, LV2_URID urid) {
-    auto *self = static_cast<LilvHost *>(h);
+const char *Lv2Host::s_unmap_cb(LV2_URID_Unmap_Handle h, LV2_URID urid) {
+    auto *self = static_cast<Lv2Host *>(h);
     auto it = self->rev.find(urid);
     return (it != self->rev.end()) ? it->second.c_str() : "";
 }
-LV2_URID LilvHost::map_uri(const char *uri) {
+LV2_URID Lv2Host::map_uri(const char *uri) {
     if (!uri) {
         return 0;
     }
@@ -1018,7 +1018,7 @@ LV2_URID LilvHost::map_uri(const char *uri) {
     rev.emplace(id, key);
     return id;
 }
-void LilvHost::premap_common_uris() {
+void Lv2Host::premap_common_uris() {
     urids.atom_Int = map_uri(LV2_ATOM__Int);
     urids.atom_Float = map_uri(LV2_ATOM__Float);
     urids.param_sr = map_uri(LV2_PARAMETERS__sampleRate);
@@ -1036,7 +1036,7 @@ void LilvHost::premap_common_uris() {
     urids.log_Trace = map_uri(LV2_LOG__Trace);
 #endif
 }
-void LilvHost::rebuild_options(int p_frames) {
+void Lv2Host::rebuild_options(int p_frames) {
     sr_f = (float)sr;
     nom = min = max = p_frames;
     seq = seq_bytes;
@@ -1051,15 +1051,15 @@ void LilvHost::rebuild_options(int p_frames) {
 }
 
 // lv2:log
-int LilvHost::s_log_printf(LV2_Log_Handle h, LV2_URID type, const char *fmt, ...) {
+int Lv2Host::s_log_printf(LV2_Log_Handle h, LV2_URID type, const char *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
     int r = s_log_vprintf(h, type, fmt, ap);
     va_end(ap);
     return r;
 }
-int LilvHost::s_log_vprintf(LV2_Log_Handle h, LV2_URID type, const char *fmt, va_list ap) {
-    auto *self = static_cast<LilvHost *>(h);
+int Lv2Host::s_log_vprintf(LV2_Log_Handle h, LV2_URID type, const char *fmt, va_list ap) {
+    auto *self = static_cast<Lv2Host *>(h);
     const char *tag = "LOG";
     FILE *out = stdout;
     if (type == self->urids.log_Error) {
@@ -1084,7 +1084,7 @@ int LilvHost::s_log_vprintf(LV2_Log_Handle h, LV2_URID type, const char *fmt, va
 }
 
 // lv2:state helpers
-char *LilvHost::s_state_abs_path(LV2_State_Map_Path_Handle, const char *p) {
+char *Lv2Host::s_state_abs_path(LV2_State_Map_Path_Handle, const char *p) {
     if (!p || !*p) {
         return strdup("");
     }
@@ -1094,14 +1094,14 @@ char *LilvHost::s_state_abs_path(LV2_State_Map_Path_Handle, const char *p) {
     std::string out = std::string("/tmp/") + p;
     return strdup(out.c_str());
 }
-char *LilvHost::s_state_abspath_to_abstract(LV2_State_Map_Path_Handle, const char *abs) {
+char *Lv2Host::s_state_abspath_to_abstract(LV2_State_Map_Path_Handle, const char *abs) {
     return strdup((!abs || !*abs) ? "" : abs);
 }
-char *LilvHost::s_state_make_path(LV2_State_Make_Path_Handle, const char *leaf) {
+char *Lv2Host::s_state_make_path(LV2_State_Make_Path_Handle, const char *leaf) {
     std::string out = std::string("/tmp/") + (leaf ? leaf : "");
     return strdup(out.c_str());
 }
-void LilvHost::s_state_free_path(LV2_State_Free_Path_Handle, char *p) {
+void Lv2Host::s_state_free_path(LV2_State_Free_Path_Handle, char *p) {
     if (p) {
         std::free(p);
     }

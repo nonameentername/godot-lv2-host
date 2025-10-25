@@ -34,7 +34,7 @@ elseif(UNIX)
     endif()
 endif()
 
-project(godot-lilv VERSION 0.1.0 LANGUAGES C CXX)
+project(godot-lv2-host VERSION 0.1.0 LANGUAGES C CXX)
 
 message(STATUS "VCPKG_TARGET_TRIPLET: ${VCPKG_TARGET_TRIPLET}")
 message(STATUS "CMAKE_TOOLCHAIN_FILE: ${CMAKE_TOOLCHAIN_FILE}")
@@ -49,18 +49,18 @@ endif()
 
 set(SOURCE
     ${CMAKE_CURRENT_SOURCE_DIR}/src/host/main.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/lilv_host.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/lilv_circular_buffer.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/lv2_host.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/lv2_circular_buffer.cpp
 )
 set(HEADER
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/lilv_host.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/lv2_host.h
 )
 
-add_executable(lilv-host ${SOURCE} ${HEADER})
+add_executable(lv2-host ${SOURCE} ${HEADER})
 
-set_target_properties(lilv-host PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set_target_properties(lv2-host PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
-target_include_directories(lilv-host PUBLIC
+target_include_directories(lv2-host PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/host
     ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
@@ -72,8 +72,8 @@ if(Lilv_FOUND)
 else()
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(LILV REQUIRED IMPORTED_TARGET lilv-0)
-    target_link_libraries(lilv-host PRIVATE PkgConfig::LILV)
+    target_link_libraries(lv2-host PRIVATE PkgConfig::LILV)
 endif()
 
 find_package(SndFile CONFIG REQUIRED)
-target_link_libraries(lilv-host PRIVATE SndFile::sndfile)
+target_link_libraries(lv2-host PRIVATE SndFile::sndfile)

@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" uid="uid://2lpq8pb0mdfe" path="res://main.gd" id="1_ob6y6"]
 
-[sub_resource type="AudioStreamLilv" id="AudioStreamLilv_ig7tw"]
+[sub_resource type="AudioStreamLv2" id="AudioStreamLv2_ig7tw"]
 
 [node name="main" type="Node2D"]
 script = ExtResource("1_ob6y6")
@@ -63,11 +63,11 @@ max_value = 1.0
 step = 0.01
 value = 1.0
 
-[node name="LilvPlayer" type="AudioStreamPlayer" parent="."]
-stream = SubResource("AudioStreamLilv_ig7tw")
+[node name="Lv2Player" type="AudioStreamPlayer" parent="."]
+stream = SubResource("AudioStreamLv2_ig7tw")
 autoplay = true
 
-[node name="LilvChannelPlayer" type="AudioStreamPlayer" parent="."]
+[node name="Lv2ChannelPlayer" type="AudioStreamPlayer" parent="."]
 volume_db = -80.0
 
 [connection signal="toggled" from="CheckButton" to="." method="_on_check_button_toggled"]

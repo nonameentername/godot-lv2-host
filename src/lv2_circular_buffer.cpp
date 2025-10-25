@@ -1,19 +1,19 @@
-#include "lilv_circular_buffer.h"
+#include "lv2_circular_buffer.h"
 
 using namespace godot;
 
 template <typename T>
-LilvCircularBuffer<T>::LilvCircularBuffer() {
+Lv2CircularBuffer<T>::Lv2CircularBuffer() {
     audio_buffer = new AudioRingBuffer<T>();
 }
 
 template <typename T>
-LilvCircularBuffer<T>::~LilvCircularBuffer() {
+Lv2CircularBuffer<T>::~Lv2CircularBuffer() {
     delete audio_buffer;
 }
 
 template <typename T>
-void LilvCircularBuffer<T>::write_channel(const T *p_buffer, int p_frames) {
+void Lv2CircularBuffer<T>::write_channel(const T *p_buffer, int p_frames) {
     for (int frame = 0; frame < p_frames; frame++) {
         audio_buffer->buffer[(audio_buffer->write_index + frame) % CIRCULAR_BUFFER_SIZE] = p_buffer[frame];
     }
@@ -21,7 +21,7 @@ void LilvCircularBuffer<T>::write_channel(const T *p_buffer, int p_frames) {
 }
 
 template <typename T>
-int LilvCircularBuffer<T>::read_channel(T *p_buffer, int p_frames) {
+int Lv2CircularBuffer<T>::read_channel(T *p_buffer, int p_frames) {
     const int read_index  = audio_buffer->read_index;
     const int write_index = audio_buffer->write_index;
 
@@ -45,11 +45,11 @@ int LilvCircularBuffer<T>::read_channel(T *p_buffer, int p_frames) {
 }
 
 template <typename T>
-void LilvCircularBuffer<T>::update_read_index(int p_frames) {
+void Lv2CircularBuffer<T>::update_read_index(int p_frames) {
     audio_buffer->read_index = (audio_buffer->read_index + p_frames) % CIRCULAR_BUFFER_SIZE;
 }
 
 namespace godot {
-	template class LilvCircularBuffer<float>;
-	template class LilvCircularBuffer<int>;
+	template class Lv2CircularBuffer<float>;
+	template class Lv2CircularBuffer<int>;
 }

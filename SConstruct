@@ -23,10 +23,10 @@ def set_build_info(source, target):
         f.write(content) 
 
 
-build_info_source_files = ["templates/godotlilv.gdextension.in",
+build_info_source_files = ["templates/godotlv2host.gdextension.in",
                            "templates/version_generated.gen.h.in"]
 
-build_info_target_files = ["addons/lilv/bin/godotlilv.gdextension",
+build_info_target_files = ["addons/lv2-host/bin/godotlv2host.gdextension",
                            "src/version_generated.gen.h"]
 
 
@@ -39,7 +39,7 @@ def create_build_info_strfunction(target, source, env):
     return f"Creating build info files: {', '.join(str(t) for t in target)}"
 
 
-libname = "liblilvgodot"
+libname = "liblv2hostgodot"
 projectdir = "."
 
 if sys.platform == "windows":
@@ -92,24 +92,24 @@ elif env["platform"] == "macos":
     env.Append(LIBS=[lilv_library, "serd-0", "sord-0", "zix-0"])
 
     if env["dev_build"]:
-        env.Append(LIBPATH=["addons/lilv/bin/osxcross/debug/vcpkg_installed/univeral-osxcross/lib"])
-        env.Append(CPPPATH=["addons/lilv/bin/osxcross/debug/vcpkg_installed/univeral-osxcross/include"])
+        env.Append(LIBPATH=["addons/lv2-host/bin/osxcross/debug/vcpkg_installed/univeral-osxcross/lib"])
+        env.Append(CPPPATH=["addons/lv2-host/bin/osxcross/debug/vcpkg_installed/univeral-osxcross/include"])
         #env.Append(RPATH=["", "."])
     else:
-        env.Append(LIBPATH=["addons/lilv/bin/osxcross/release/vcpkg_installed/univeral-osxcross/lib"])
-        env.Append(CPPPATH=["addons/lilv/bin/osxcross/release/vcpkg_installed/univeral-osxcross/include"])
+        env.Append(LIBPATH=["addons/lv2-host/bin/osxcross/release/vcpkg_installed/univeral-osxcross/lib"])
+        env.Append(CPPPATH=["addons/lv2-host/bin/osxcross/release/vcpkg_installed/univeral-osxcross/include"])
         #env.Append(RPATH=["", "."])
 elif env["platform"] == "linux":
     lilv_library = "lilv-0"
     env.Append(LIBS=[lilv_library, "serd-0", "sord-0", "zix-0"])
 
     if env["dev_build"]:
-        env.Append(LIBPATH=["addons/lilv/bin/linux/debug/vcpkg_installed/x64-linux/lib"])
-        env.Append(CPPPATH=["addons/lilv/bin/linux/debug/vcpkg_installed/x64-linux/include", "addons/lilv/bin/linux/debug/vcpkg_installed/x64-linux/include/lilv-0"])
+        env.Append(LIBPATH=["addons/lv2-host/bin/linux/debug/vcpkg_installed/x64-linux/lib"])
+        env.Append(CPPPATH=["addons/lv2-host/bin/linux/debug/vcpkg_installed/x64-linux/include", "addons/lv2-host/bin/linux/debug/vcpkg_installed/x64-linux/include/lilv-0"])
         #env.Append(RPATH=["", "."])
     else:
-        env.Append(LIBPATH=["addons/lilv/bin/linux/release/vcpkg_installed/x64-linux/lib"])
-        env.Append(CPPPATH=["addons/lilv/bin/linux/release/vcpkg_installed/x64-linux/include", "addons/lilv/bin/linux/release/vcpkg_installed/x64-linux/include/lilv-0"])
+        env.Append(LIBPATH=["addons/lv2-host/bin/linux/release/vcpkg_installed/x64-linux/lib"])
+        env.Append(CPPPATH=["addons/lv2-host/bin/linux/release/vcpkg_installed/x64-linux/include", "addons/lv2-host/bin/linux/release/vcpkg_installed/x64-linux/include/lilv-0"])
         #env.Append(RPATH=["", "."])
 
 #env.Append(CPPFLAGS=["-fexceptions"])
@@ -130,7 +130,7 @@ if env["platform"] == "macos":
     platlibname = "{}.{}.{}".format(libname, env["platform"], env["target"])
     file = "{}.framework/{}".format(env["platform"], platlibname, platlibname)
 
-libraryfile = "addons/lilv/bin/{}/{}".format(env["platform"], file)
+libraryfile = "addons/lv2-host/bin/{}/{}".format(env["platform"], file)
 library = env.SharedLibrary(
     libraryfile,
     source=sources,

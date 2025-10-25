@@ -1,10 +1,12 @@
-#ifndef LILV_INSTANCE_H
-#define LILV_INSTANCE_H
+#ifndef LV2_INSTANCE_H
+#define LV2_INSTANCE_H
 
 #include "godot_cpp/classes/mutex.hpp"
 #include "godot_cpp/classes/thread.hpp"
 #include "godot_cpp/classes/semaphore.hpp"
+#include "godot_cpp/variant/typed_array.hpp"
 #include "lilv/lilv.h"
+#include "lv2_control.h"
 #include <godot_cpp/classes/audio_frame.hpp>
 #include <godot_cpp/classes/audio_server.hpp>
 #include <godot_cpp/classes/engine.hpp>
@@ -17,8 +19,8 @@
 #include <godot_cpp/templates/vector.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
-#include <lilv_host.h>
-#include <lilv_circular_buffer.h>
+#include <lv2_host.h>
+#include <lv2_circular_buffer.h>
 
 static const float AUDIO_PEAK_OFFSET = 0.0000000001f;
 static const float AUDIO_MIN_PEAK_DB = -200.0f;
@@ -27,9 +29,9 @@ static const int CIRCULAR_BUFFER_SIZE = BUFFER_FRAME_SIZE * 2 + 10;
 
 namespace godot {
 
-class LilvInstance : public Object {
-    GDCLASS(LilvInstance, Object);
-    friend class LilvServer;
+class Lv2Instance : public Object {
+    GDCLASS(Lv2Instance, Object);
+    friend class Lv2Server;
 
 private:
     LilvWorld *world;
@@ -39,9 +41,9 @@ private:
     bool channels_cleared;
 
     int sfont_id;
-    LilvHost *lilv_host;
+    Lv2Host *lv2_host;
     bool finished;
-    String lilv_name;
+    String lv2_name;
     bool solo;
     bool mute;
     bool bypass;
@@ -61,14 +63,14 @@ private:
         bool used = false;
         bool active = false;
         float peak_volume = AUDIO_MIN_PEAK_DB;
-        LilvCircularBuffer<float> buffer;
+        Lv2CircularBuffer<float> buffer;
         Channel() {
         }
     };
 
     void *midi_buffer;
 
-    std::vector<LilvCircularBuffer<float>> input_channels;
+    std::vector<Lv2CircularBuffer<float>> input_channels;
     std::vector<Channel> output_channels;
 
     Vector<float> temp_buffer;
@@ -79,9 +81,11 @@ private:
     Vector<Channel> output_named_channels;
     HashMap<String, int> named_channels;
 
-    HashMap<double, double> lilv_data;
+    HashMap<double, double> lv2_data;
 
-    void configure_lilv();
+    TypedArray<Lv2Control> controls;
+
+    void configure_lv2();
 
     Error start_thread();
     void stop_thread();
@@ -93,8 +97,8 @@ protected:
     static void _bind_methods();
 
 public:
-    LilvInstance();
-    ~LilvInstance();
+    Lv2Instance();
+    ~Lv2Instance();
 
     void start();
     void stop();
@@ -118,14 +122,16 @@ public:
     void set_channel_sample(AudioFrame *p_buffer, float p_rate, int p_frames, int left, int right);
     int get_channel_sample(AudioFrame *p_buffer, float p_rate, int p_frames, int left, int right);
 
-    void set_lilv_name(const String &name);
-    const String &get_lilv_name();
+    void set_lv2_name(const String &name);
+    const String &get_lv2_name();
 
     int get_input_channel_count();
     int get_output_channel_count();
 
     int get_input_midi_count();
     int get_output_midi_count();
+
+    TypedArray<Lv2Control> get_input_controls();
 
     double get_time_since_last_mix();
     double get_time_to_next_mix();

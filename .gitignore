@@ -8,7 +8,7 @@
 .sconsign.dblite
 .vs
 .vscode
-addons/lilv/bin
+addons/lv2-host/bin
 
 build
 build-log.txt

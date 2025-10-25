@@ -1,0 +1,19 @@
+[godot-lv2-host]
+
+version = "${version}"
+build = "${build}"
+
+[configuration]
+
+entry_symbol = "godot_lv2_host_library_init"
+compatibility_minimum = 4.3
+reloadable = true
+
+[libraries]
+
+macos.debug = "res://addons/lv2-host/bin/macos/macos.framework/liblv2hostgodot.macos.template_debug"
+macos.release = "res://addons/lv2-host/bin/macos/macos.framework/liblv2hostgodot.macos.template_release"
+windows.debug.x86_64 = "res://addons/lv2-host/bin/windows/liblv2hostgodot.windows.template_debug.dev.x86_64.dll"
+windows.release.x86_64 = "res://addons/lv2-host/bin/windows/liblv2hostgodot.windows.template_release.x86_64.dll"
+linux.debug.x86_64 = "res://addons/lv2-host/bin/linux/liblv2hostgodot.linux.template_debug.dev.x86_64.so"
+linux.release.x86_64 = "res://addons/lv2-host/bin/linux/liblv2hostgodot.linux.template_release.x86_64.so"

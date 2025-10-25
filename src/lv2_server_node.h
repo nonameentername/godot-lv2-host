@@ -1,18 +1,18 @@
-#ifndef LILV_SERVER_NODE_H
-#define LILV_SERVER_NODE_H
+#ifndef LV2_SERVER_NODE_H
+#define LV2_SERVER_NODE_H
 
 #include <godot_cpp/classes/node.hpp>
 
 namespace godot {
 
-class LilvServerNode : public Node {
-    GDCLASS(LilvServerNode, Node);
+class Lv2ServerNode : public Node {
+    GDCLASS(Lv2ServerNode, Node);
 
 private:
 protected:
 public:
-    LilvServerNode();
-    ~LilvServerNode();
+    Lv2ServerNode();
+    ~Lv2ServerNode();
 
     void _process();
 

@@ -3,7 +3,7 @@
 #include <sndfile.h>
 #include <iostream>
 
-#include "lilv_host.h"
+#include "lv2_host.h"
 
 using namespace godot;
 
@@ -90,11 +90,11 @@ struct WavWriter {
     }
 };
 
-bool run_offline(LilvHost *lilv_host, double sr, double duration_sec, double freq_hz, float gain, bool midi_enabled, int midi_note,
+bool run_offline(Lv2Host *lv2_host, double sr, double duration_sec, double freq_hz, float gain, bool midi_enabled, int midi_note,
                            const std::string &out_path) {
 
     WavWriter writer;
-    if (!writer.open(out_path.c_str(), (int)sr, (int)std::max(lilv_host->get_output_channel_count(), 1))) {
+    if (!writer.open(out_path.c_str(), (int)sr, (int)std::max(lv2_host->get_output_channel_count(), 1))) {
         std::cerr << "Failed to open output: " << out_path << "\n";
         return false;
     }
@@ -102,7 +102,7 @@ bool run_offline(LilvHost *lilv_host, double sr, double duration_sec, double fre
     int block = 1024;
 
     std::vector<float> zero_buf(block, 0.f);
-    std::vector<const float *> outs(lilv_host->get_output_channel_count(), zero_buf.data());
+    std::vector<const float *> outs(lv2_host->get_output_channel_count(), zero_buf.data());
 
     const size_t total_frames = (size_t)(duration_sec * sr);
     size_t done = 0;
@@ -114,27 +114,27 @@ bool run_offline(LilvHost *lilv_host, double sr, double duration_sec, double fre
         const uint32_t n = (uint32_t)std::min((size_t)block, total_frames - done);
         const uint32_t frames_to_write = n;
 
-        if (lilv_host->get_input_channel_count() > 0) {
+        if (lv2_host->get_input_channel_count() > 0) {
             for (uint32_t i = 0; i < n; ++i) {
                 float s = gain * (float)std::sin(phase);
                 phase += twopi * freq_hz / sr;
-                for (uint32_t c = 0; c < lilv_host->get_input_channel_count(); ++c) {
-                    lilv_host->get_input_channel_buffer(c)[i] = s;
+                for (uint32_t c = 0; c < lv2_host->get_input_channel_count(); ++c) {
+                    lv2_host->get_input_channel_buffer(c)[i] = s;
                     //get_input_channel_buffer(c)[i] = 0;
                 }
             }
             if (n < block) {
-                for (uint32_t c = 0; c < lilv_host->get_input_channel_count(); ++c) {
+                for (uint32_t c = 0; c < lv2_host->get_input_channel_count(); ++c) {
                     //TODO: does adding n to get channel buffer work?
-                    std::memset(lilv_host->get_input_channel_buffer(c) + n, 0, (block - n) * sizeof(float));
+                    std::memset(lv2_host->get_input_channel_buffer(c) + n, 0, (block - n) * sizeof(float));
                 }
             }
         }
 
-        //for (int i = 0; i < lilv_host->get_input_midi_count(); i++) {
+        //for (int i = 0; i < lv2_host->get_input_midi_count(); i++) {
         //}
 
-		if (midi_enabled && lilv_host->get_input_midi_count() > 0) {
+		if (midi_enabled && lv2_host->get_input_midi_count() > 0) {
 			bool send_on = (elapsed_frames == 0);
 			bool send_off = (elapsed_frames < (size_t)sr) && (elapsed_frames + n >= (size_t)sr);
 
@@ -148,13 +148,13 @@ bool run_offline(LilvHost *lilv_host, double sr, double duration_sec, double fre
 				midi_event.data[1] = (uint8_t)midi_note;
 				midi_event.data[2] = 100;
 
-				lilv_host->write_midi_in(0, midi_event);
+				lv2_host->write_midi_in(0, midi_event);
 
 				midi_event.data[1] = (uint8_t)midi_note + 4;
-				lilv_host->write_midi_in(0, midi_event);
+				lv2_host->write_midi_in(0, midi_event);
 
 				midi_event.data[1] = (uint8_t)midi_note + 7;
-				lilv_host->write_midi_in(0, midi_event);
+				lv2_host->write_midi_in(0, midi_event);
 			}
 
 			if (send_off) {
@@ -168,24 +168,24 @@ bool run_offline(LilvHost *lilv_host, double sr, double duration_sec, double fre
 				midi_event.data[1] = (uint8_t)midi_note;
 				midi_event.data[2] = 100;
 
-				lilv_host->write_midi_in(0, midi_event);
+				lv2_host->write_midi_in(0, midi_event);
 
 				midi_event.data[1] = (uint8_t)midi_note + 4;
-				lilv_host->write_midi_in(0, midi_event);
+				lv2_host->write_midi_in(0, midi_event);
 
 				midi_event.data[1] = (uint8_t)midi_note + 7;
-				lilv_host->write_midi_in(0, midi_event);
+				lv2_host->write_midi_in(0, midi_event);
 			}
 		}
 
-		lilv_host->perform(block);
+		lv2_host->perform(block);
 
         bool dump_midi_out = false;
 
         if (dump_midi_out) {
-            if (midi_enabled && lilv_host->get_output_midi_count() > 0) {
+            if (midi_enabled && lv2_host->get_output_midi_count() > 0) {
                 MidiEvent midi_event;
-                while(lilv_host->read_midi_out(0, midi_event)) {
+                while(lv2_host->read_midi_out(0, midi_event)) {
                     std::cout << "  MIDI:";
                     for (uint32_t i = 0; i < midi_event.size; i++) {
                         std::cout << " " << std::hex << (int)midi_event.data[i] << std::dec;
@@ -196,16 +196,16 @@ bool run_offline(LilvHost *lilv_host, double sr, double duration_sec, double fre
         }
 
         // write audio to wav
-        for (uint32_t c = 0; c < lilv_host->get_output_channel_count(); ++c) {
-            if (c < lilv_host->get_output_channel_count() && lilv_host->get_output_channel_buffer(c)) {
-                outs[c] = lilv_host->get_output_channel_buffer(c);
+        for (uint32_t c = 0; c < lv2_host->get_output_channel_count(); ++c) {
+            if (c < lv2_host->get_output_channel_count() && lv2_host->get_output_channel_buffer(c)) {
+                outs[c] = lv2_host->get_output_channel_buffer(c);
             } else {
                 outs[c] = zero_buf.data();
             }
         }
 
         if (frames_to_write > 0) {
-            writer.write_interleaved((const float *const *)outs.data(), frames_to_write, (int)lilv_host->get_output_channel_count());
+            writer.write_interleaved((const float *const *)outs.data(), frames_to_write, (int)lv2_host->get_output_channel_count());
         }
 
         done += n;
@@ -237,13 +237,13 @@ int main(int argc, char **argv) {
 
     LilvWorld *world = lilv_world_new();
 
-	LilvHost *lilv_host = new LilvHost(world, sr, block, seq_capacity_hint);
+	Lv2Host *lv2_host = new Lv2Host(world, sr, block, seq_capacity_hint);
 
-	if (!lilv_host->load_world()) {
+	if (!lv2_host->load_world()) {
 		std::cerr << "Failed to create/load lilv world\n";
 		return 2;
 	}
-	if (!lilv_host->find_plugin(plugin_uri)) {
+	if (!lv2_host->find_plugin(plugin_uri)) {
 		std::cerr << "Plugin not found: " << plugin_uri << "\n";
 		return 2;
 	}
@@ -251,34 +251,34 @@ int main(int argc, char **argv) {
     bool dump_plugin_info = true;
 
     if (dump_plugin_info) {
-        lilv_host->dump_plugin_features();
+        lv2_host->dump_plugin_features();
     }
 
-	if (!lilv_host->instantiate()) {
+	if (!lv2_host->instantiate()) {
 		std::cerr << "Failed to instantiate plugin\n";
 		return 3;
 	}
 
     if (dump_plugin_info) {
-        lilv_host->dump_host_features();
+        lv2_host->dump_host_features();
     }
 
-	lilv_host->wire_worker_interface();
-	lilv_host->set_cli_control_overrides(cli_sets);
+	lv2_host->wire_worker_interface();
+	lv2_host->set_cli_control_overrides(cli_sets);
 
-	if (!lilv_host->prepare_ports_and_buffers(block)) {
+	if (!lv2_host->prepare_ports_and_buffers(block)) {
 		std::cerr << "Failed to prepare/connect ports\n";
 		return 3;
 	}
 
     if (dump_plugin_info) {
-        lilv_host->dump_ports();
+        lv2_host->dump_ports();
     }
 
 	if (dump_plugin_info) {
 		std::cout << "input controls:" << std::endl;
-		for (int i = 0; i < lilv_host->get_input_control_count(); i++) {
-			const Control *control = lilv_host->get_input_control(i);
+		for (int i = 0; i < lv2_host->get_input_control_count(); i++) {
+			const Control *control = lv2_host->get_input_control(i);
 			std::cout << "  symbol[" << i <<  "] = " << control->symbol << std::endl;
 			for (int j = 0; j < control->choices.size(); j++) {
 				std::cout << "    choice = " << control->choices[j].first << std::endl;
@@ -286,31 +286,31 @@ int main(int argc, char **argv) {
 		}
 
 		std::cout << "output controls:" << std::endl;
-		for (int i = 0; i < lilv_host->get_output_control_count(); i++) {
-			const Control *control = lilv_host->get_output_control(i);
+		for (int i = 0; i < lv2_host->get_output_control_count(); i++) {
+			const Control *control = lv2_host->get_output_control(i);
 			std::cout << "  symbol[" << i <<  "] = " << control->symbol << std::endl;
 		}
 	}
 
-	lilv_host->activate();
+	lv2_host->activate();
 
     //Testing changing the volume parameter using http://code.google.com/p/amsynth/amsynth
-    //lilv_host->set_input_control_value(14, 0.5);
-    //std::cout << "master_volume = " << lilv_host->get_input_control_value(14) << std::endl;
+    //lv2_host->set_input_control_value(14, 0.5);
+    //std::cout << "master_volume = " << lv2_host->get_input_control_value(14) << std::endl;
 
-	const bool ok = run_offline(lilv_host, sr, dur_sec, freq, gain, midi_enabled, midi_note, out_path);
+	const bool ok = run_offline(lv2_host, sr, dur_sec, freq, gain, midi_enabled, midi_note, out_path);
 
-	lilv_host->deactivate();
+	lv2_host->deactivate();
 
 	if (!ok) {
 		return 4;
 	}
 
-    std::cout << "Number of output channels = " << lilv_host->get_output_channel_count() << std::endl;
+    std::cout << "Number of output channels = " << lv2_host->get_output_channel_count() << std::endl;
 
 	std::cout << "Wrote " << out_path << "\n";
 
-	delete lilv_host;
+	delete lv2_host;
 
 	return 0;
 }

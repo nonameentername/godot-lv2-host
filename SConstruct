@@ -89,7 +89,7 @@ elif env["platform"] == "web":
         env.Append(LINKFLAGS=["-g", "-s", "ERROR_ON_UNDEFINED_SYMBOLS=1"])
 elif env["platform"] == "macos":
     lilv_library = "lilv-0"
-    env.Append(LIBS=[lilv_library, "serd-0", "sord-0", "zix-0"])
+    env.Append(LIBS=[lilv_library, "serd-0", "sord-0", "zix-0", "sratom-0"])
 
     if env["dev_build"]:
         env.Append(LIBPATH=["addons/lv2-host/bin/osxcross/debug/vcpkg_installed/univeral-osxcross/lib"])
@@ -101,7 +101,7 @@ elif env["platform"] == "macos":
         #env.Append(RPATH=["", "."])
 elif env["platform"] == "linux":
     lilv_library = "lilv-0"
-    env.Append(LIBS=[lilv_library, "serd-0", "sord-0", "zix-0"])
+    env.Append(LIBS=[lilv_library, "serd-0", "sord-0", "zix-0", "sratom-0"])
 
     if env["dev_build"]:
         env.Append(LIBPATH=["addons/lv2-host/bin/linux/debug/vcpkg_installed/x64-linux/lib"])

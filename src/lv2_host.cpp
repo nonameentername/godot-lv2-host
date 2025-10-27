@@ -203,6 +203,7 @@ Lv2Host::~Lv2Host() {
     freeNode(BUFTYPE);
     freeNode(SUPPORTS);
     freeNode(MIDI_EVENT);
+    freeNode(PRESETS);
     if (inst) {
         lilv_instance_free(inst);
         inst = nullptr;
@@ -232,6 +233,7 @@ bool Lv2Host::load_world() {
     BUFTYPE = lilv_new_uri(world, LV2_ATOM__bufferType);
     SUPPORTS = lilv_new_uri(world, LV2_ATOM__supports);
     MIDI_EVENT = lilv_new_uri(world, LV2_MIDI__MidiEvent);
+	PRESETS = lilv_new_uri(world, LV2_PRESETS__Preset);
     return true;
 }
 
@@ -362,6 +364,12 @@ std::string Lv2Host::port_symbol(const LilvPort *cport) const {
     const LilvNode *sym = lilv_port_get_symbol(plugin, cport);
     const char *s = sym ? lilv_node_as_string(sym) : nullptr;
     return to_string_safe(s);
+}
+
+uint32_t Lv2Host::lookup_port_index_by_symbol(const char* sym) const {
+    if (!sym) return UINT32_MAX;
+    auto it = symbol_to_index.find(sym);
+    return (it == symbol_to_index.end()) ? UINT32_MAX : it->second;
 }
 
 bool Lv2Host::prepare_ports_and_buffers(int p_frames) {
@@ -691,7 +699,7 @@ bool Lv2Host::prepare_ports_and_buffers(int p_frames) {
             }
 
 			LilvNode* units_unit_uri = lilv_new_uri(world, LV2_UNITS__unit);
-			const LilvNodes* unit_values = lilv_port_get_value(plugin, port, units_unit_uri);
+			LilvNodes* unit_values = lilv_port_get_value(plugin, port, units_unit_uri);
 			const LilvNode* unit_value = nullptr;
 
 			if (unit_values && lilv_nodes_size(unit_values) > 0) {
@@ -709,6 +717,10 @@ bool Lv2Host::prepare_ports_and_buffers(int p_frames) {
 					unit = unit.substr(strlen(LV2_UNITS_PREFIX));
 				}
 			}
+
+            if (unit_values) {
+                lilv_nodes_free(unit_values);
+            }
 
 			lilv_node_free(units_unit_uri);
 
@@ -768,6 +780,16 @@ bool Lv2Host::prepare_ports_and_buffers(int p_frames) {
         }
     }
 
+	symbol_to_index.clear();
+
+	for (uint32_t i = 0; i < num_ports; ++i) {
+		const LilvPort* port = lilv_plugin_get_port_by_index(plugin, i);
+		const LilvNode* symbol = lilv_port_get_symbol(plugin, port);
+		if (symbol) {
+			symbol_to_index[lilv_node_as_string(symbol)] = i;
+		}
+	}
+
     return true;
 }
 
@@ -776,10 +798,80 @@ void Lv2Host::activate() {
         lilv_instance_activate(inst);
     }
 }
+
 void Lv2Host::deactivate() {
     if (inst) {
         lilv_instance_deactivate(inst);
     }
+}
+
+std::vector<std::string> Lv2Host::get_presets() {
+	std::vector<std::string> result;
+    if (plugin) {
+        LilvNodes* presets = lilv_plugin_get_related(plugin, PRESETS);
+
+		LILV_FOREACH(nodes, i, presets) {
+			const LilvNode* preset_node = lilv_nodes_get(presets, i);
+
+			lilv_world_load_resource(world, preset_node);
+
+			LilvState* st = lilv_state_new_from_world(world, &map, preset_node);
+
+			if (!st) {
+				continue;
+			}
+
+			const char* label = lilv_state_get_label(st);
+
+            if (label) {
+                result.push_back(label);
+            } else {
+                result.push_back("");
+            }
+
+            lilv_state_free(st);
+		}
+        
+        if (presets) {
+            lilv_nodes_free(presets);
+        }
+    }
+
+	return result;
+}
+
+void Lv2Host::load_preset(std::string preset) {
+    if (plugin) {
+        LilvNodes* presets = lilv_plugin_get_related(plugin, PRESETS);
+
+		LILV_FOREACH(nodes, i, presets) {
+			const LilvNode* preset_node = lilv_nodes_get(presets, i);
+
+			lilv_world_load_resource(world, preset_node);
+
+			LilvState* st = lilv_state_new_from_world(world, &map, preset_node);
+
+			if (!st) {
+				continue;
+			}
+
+			const char* label = lilv_state_get_label(st);
+			if (preset == label) {
+				lilv_state_restore(st,
+						inst,
+						&Lv2Host::s_set_port_value,
+						this,
+						0,
+						features);           
+			}
+
+            lilv_state_free(st);
+		}
+
+        if (presets) {
+            lilv_nodes_free(presets);
+        }
+	}
 }
 
 int Lv2Host::perform(int p_frames) {
@@ -1125,5 +1217,58 @@ char *Lv2Host::s_state_make_path(LV2_State_Make_Path_Handle, const char *leaf) {
 void Lv2Host::s_state_free_path(LV2_State_Free_Path_Handle, char *p) {
     if (p) {
         std::free(p);
+    }
+}
+
+void Lv2Host::s_set_port_value(const char* port_symbol,
+                               void*       user_data,
+                               const void* value,
+                               uint32_t    size,
+                               uint32_t    type_urid)
+{
+    auto* self = static_cast<Lv2Host*>(user_data);
+    if (!self) return;
+    self->set_port_value_impl(port_symbol, value, size, type_urid);
+}
+
+void Lv2Host::set_port_value_impl(const char* port_symbol,
+                                  const void* value,
+                                  uint32_t    size,
+                                  uint32_t    type_urid)
+{
+    // Find the target port
+    const uint32_t port_index = lookup_port_index_by_symbol(port_symbol);
+    if (port_index == UINT32_MAX) {
+        // Unknown symbol in preset; ignore
+        return;
+    }
+
+    // Only care about control ports here (preset may also contain file/state stuff handled via features)
+    const LilvPort* cport = lilv_plugin_get_port_by_index(plugin, port_index);
+    if (!lilv_port_is_a(plugin, cport, CONTROL)) {
+        // You could extend this to support CV/others if a plugin stores those in state
+        return;
+    }
+
+    // Expect a float for control values.
+    // Some plugins save ints/bools; convert to float.
+    float v = 0.0f;
+
+    if (size == sizeof(float) && (type_urid == urids.atom_Float || type_urid == 0)) {
+        std::memcpy(&v, value, sizeof(float));
+    } else if (size == sizeof(int32_t) && (type_urid == urids.atom_Int || type_urid == 0)) {
+        int32_t i = 0;
+        std::memcpy(&i, value, sizeof(int32_t));
+        v = static_cast<float>(i);
+    } else {
+        // Unsupported type in preset for a control port; ignore quietly
+        return;
+    }
+
+    // Write into the connected buffer
+    if (port_index < port_buffers.size() && port_buffers[port_index]) {
+        // NOTE: If you call lilv_state_restore from a non-audio thread,
+        // this is safe. If from the audio thread, consider deferring.
+        *reinterpret_cast<float*>(port_buffers[port_index]) = v;
     }
 }

@@ -2,6 +2,7 @@
 #include <cstring>
 #include <sndfile.h>
 #include <iostream>
+#include <vector>
 
 #include "lv2_host.h"
 
@@ -301,6 +302,21 @@ int main(int argc, char **argv) {
 			std::cout << "  symbol[" << i <<  "] = " << control->symbol << std::endl;
 		}
 	}
+
+	std::vector<std::string> presets = lv2_host->get_presets();
+
+	if (dump_plugin_info) {
+		std::cout << "Preset size: " << presets.size() << std::endl;
+		for (int i = 0; i < presets.size(); i++) {
+			std::cout << "Preset: " << presets[i] << std::endl;
+		}
+	}
+
+    /*
+    if (presets.size() > 0) {
+        lv2_host->load_preset(presets[1]);
+    }
+    */
 
 	lv2_host->activate();
 

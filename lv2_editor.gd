@@ -28,6 +28,17 @@ func initialize(lv2_instance: Lv2Instance):
 			container.add_child(slider)
 
 
+func update(lv2_instance: Lv2Instance):
+	lv2 = lv2_instance
+	for input_control in lv2_instance.get_input_controls():
+		var value = lv2_instance.get_input_control_channel(input_control.index)
+		if input_control.get_choices().size() > 0:
+			var dropdown: Lv2ControlDropdown = container.get_child(input_control.index)
+			dropdown.dropdown.selected = value
+		else:
+			var slider: Lv2ControlSlider = container.get_child(input_control.index)
+			slider.line_edit.text = str(value)
+
+
 func _on_value_changed(control: int, value: float):
 	lv2.send_input_control_channel(control, value)
-	#print ("Control = ", control, " value = ", value)

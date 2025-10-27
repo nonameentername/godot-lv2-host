@@ -84,6 +84,8 @@ private:
     TypedArray<Lv2Control> input_controls;
     TypedArray<Lv2Control> output_controls;
 
+    TypedArray<String> presets;
+
     void configure_lv2();
 
     Error start_thread();
@@ -135,6 +137,9 @@ public:
 
     TypedArray<Lv2Control> get_input_controls();
     TypedArray<Lv2Control> get_output_controls();
+
+    TypedArray<String> get_presets();
+    void load_preset(String p_preset);
 
     double get_time_since_last_mix();
     double get_time_to_next_mix();

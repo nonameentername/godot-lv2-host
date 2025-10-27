@@ -64,6 +64,12 @@ max_value = 1.0
 step = 0.01
 value = 1.0
 
+[node name="OptionButton" type="OptionButton" parent="."]
+offset_left = 17.0
+offset_top = 192.0
+offset_right = 225.0
+offset_bottom = 212.0
+
 [node name="Lv2Player" type="AudioStreamPlayer" parent="."]
 stream = SubResource("AudioStreamLv2_ig7tw")
 autoplay = true
@@ -78,3 +84,4 @@ volume_db = -80.0
 [connection signal="toggled" from="CheckButton3" to="." method="_on_check_button_3_toggled"]
 [connection signal="pressed" from="Button" to="." method="_on_button_pressed"]
 [connection signal="value_changed" from="VSlider" to="." method="_on_v_slider_value_changed"]
+[connection signal="item_selected" from="OptionButton" to="." method="_on_option_button_item_selected"]

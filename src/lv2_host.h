@@ -14,6 +14,7 @@
 #include <lv2/worker/worker.h>
 #include <lv2/units/units.h>
 #include <lv2/port-props/port-props.h>
+#include <lv2/presets/presets.h>
 
 #include <lilv/lilv.h>
 
@@ -96,6 +97,8 @@ private:
     // helpers
     std::string port_symbol(const LilvPort *cport) const;
 
+	uint32_t lookup_port_index_by_symbol(const char* sym) const;
+
     // config
     double sr{};
     uint32_t seq_bytes{};
@@ -109,7 +112,7 @@ private:
 
     // nodes
     LilvNode *AUDIO{}, *CONTROL{}, *CV{}, *INPUT{}, *OUTPUT{};
-    LilvNode *ATOM{}, *SEQUENCE{}, *BUFTYPE{}, *SUPPORTS{}, *MIDI_EVENT{};
+    LilvNode *ATOM{}, *SEQUENCE{}, *BUFTYPE{}, *SUPPORTS{}, *MIDI_EVENT{}, *PRESETS{};
 
     uint32_t num_ports{};
     uint32_t num_audio_in{};
@@ -120,7 +123,8 @@ private:
     LV2_Feature feat_map{};
     LV2_URID next_urid{1};
     std::unordered_map<std::string, LV2_URID> dict;
-    std::unordered_map<LV2_URID, std::string> rev;
+	std::unordered_map<LV2_URID, std::string> rev;
+	std::unordered_map<std::string, uint32_t> symbol_to_index;
 
     // URID unmap
     LV2_URID_Unmap unmap{};
@@ -225,6 +229,9 @@ public:
     void activate();
     void deactivate();
 
+    std::vector<std::string> get_presets();
+	void load_preset(std::string preset);
+
     void wire_worker_interface();
 
     int perform(int p_frames);
@@ -258,6 +265,17 @@ public:
 
     void rt_deliver_worker_responses();
     void non_rt_do_worker_requests();
+
+	static void s_set_port_value(const char* port_symbol,
+			void*       user_data,
+			const void* value,
+			uint32_t    size,
+			uint32_t    type_urid);
+
+	void set_port_value_impl(const char* port_symbol,
+			const void* value,
+			uint32_t    size,
+			uint32_t    type_urid);
 };
 
 } // namespace godot

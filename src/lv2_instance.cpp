@@ -116,6 +116,14 @@ void Lv2Instance::configure_lv2() {
     input_channels.resize(lv2_host->get_input_channel_count());
     output_channels.resize(lv2_host->get_output_channel_count());
 
+    std::vector<std::string> host_presets = lv2_host->get_presets();
+
+    presets.clear();
+
+    for (int i = 0; i < host_presets.size(); i++) {
+        presets.push_back(host_presets[i].c_str());
+    }
+
     /*
     for (int channel = 0; channel < output_channels.size(); channel++) {
         output_channels[channel].buffer.write_channel(temp_buffer.ptrw(), p_frames);
@@ -554,6 +562,14 @@ TypedArray<Lv2Control> Lv2Instance::get_output_controls() {
     return output_controls;
 }
 
+TypedArray<String> Lv2Instance::get_presets() {
+    return presets;
+}
+
+void Lv2Instance::load_preset(String p_preset) {
+    lv2_host->load_preset(std::string(p_preset.ascii()));
+}
+
 double Lv2Instance::get_time_since_last_mix() {
     return (Time::get_singleton()->get_ticks_usec() - last_mix_time) / 1000000.0;
 }
@@ -600,6 +616,9 @@ void Lv2Instance::_bind_methods() {
 
     ClassDB::bind_method(D_METHOD("get_input_controls"), &Lv2Instance::get_input_controls);
     ClassDB::bind_method(D_METHOD("get_output_controls"), &Lv2Instance::get_output_controls);
+
+    ClassDB::bind_method(D_METHOD("get_presets"), &Lv2Instance::get_presets);
+    ClassDB::bind_method(D_METHOD("load_preset", "preset"), &Lv2Instance::load_preset);
 
     ClassDB::add_property("Lv2Instance", PropertyInfo(Variant::STRING, "lv2_name"), "set_lv2_name",
                           "get_lv2_name");

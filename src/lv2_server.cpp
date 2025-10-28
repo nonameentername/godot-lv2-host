@@ -30,6 +30,18 @@ Lv2Server::Lv2Server() {
 }
 
 Lv2Server::~Lv2Server() {
+    finish();
+
+    for (int i = 0; i < lv2_instances.size(); i++) {
+        if (lv2_instances[i]) {
+            lv2_instances[i]->stop();
+            memdelete(lv2_instances[i]);
+        }
+    }
+
+    lv2_instances.clear();
+    lv2_map.clear();
+
     if (lv2_host != NULL) {
         delete lv2_host;
         lv2_host = NULL;
@@ -565,7 +577,9 @@ void Lv2Server::unlock() {
 
 void Lv2Server::finish() {
     exit_thread = true;
-    thread->wait_to_finish();
+    if (thread.is_valid() && thread->is_started()) {
+        thread->wait_to_finish();
+    }
 }
 
 TypedArray<String> Lv2Server::get_plugins() {

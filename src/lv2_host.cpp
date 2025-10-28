@@ -632,10 +632,10 @@ bool Lv2Host::prepare_ports_and_buffers(int p_frames) {
 #if LV2HOST_DBG
             // allocate block + guard
             const uint32_t kTailGuardSamples = 64;
-            float *buf = new float[block + kTailGuardSamples]();
+            float *buf = new float[p_frames + kTailGuardSamples]();
             // place guard pattern at tail
             for (uint32_t g = 0; g < kTailGuardSamples; ++g) {
-                uint32_t *p = reinterpret_cast<uint32_t *>(buf + block + g);
+                uint32_t *p = reinterpret_cast<uint32_t *>(buf + p_frames + g);
                 *p = 0x7FC00000u;
             }
 #else

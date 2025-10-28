@@ -66,6 +66,13 @@ opts.Add(
         validator=validate_parent_dir,
     )
 )
+opts.Add(
+    BoolVariable(
+        key="asan",
+        help="Enable AddressSanitizer for builds",
+        default=localEnv.get("asan", False),
+    )
+)
 opts.Update(localEnv)
 
 Help(opts.GenerateHelpText(localEnv))
@@ -93,6 +100,7 @@ elif env["platform"] == "macos":
 
     if env["dev_build"]:
         env.Append(LIBPATH=["addons/lv2-host/bin/osxcross/debug/vcpkg_installed/univeral-osxcross/lib"])
+        #env.Append(LIBPATH=["addons/lv2-host/bin/osxcross/debug/vcpkg_installed/univeral-osxcross/debug/lib"])
         env.Append(CPPPATH=["addons/lv2-host/bin/osxcross/debug/vcpkg_installed/univeral-osxcross/include"])
         #env.Append(RPATH=["", "."])
     else:
@@ -105,6 +113,7 @@ elif env["platform"] == "linux":
 
     if env["dev_build"]:
         env.Append(LIBPATH=["addons/lv2-host/bin/linux/debug/vcpkg_installed/x64-linux/lib"])
+        #env.Append(LIBPATH=["addons/lv2-host/bin/linux/debug/vcpkg_installed/x64-linux/debug/lib"])
         env.Append(CPPPATH=["addons/lv2-host/bin/linux/debug/vcpkg_installed/x64-linux/include", "addons/lv2-host/bin/linux/debug/vcpkg_installed/x64-linux/include/lilv-0"])
         #env.Append(RPATH=["", "."])
     else:
@@ -116,6 +125,11 @@ elif env["platform"] == "linux":
 
 env.Append(CPPPATH=["src/"])
 sources = Glob("src/*.cpp")
+
+if env.get("asan", False):
+    print("SCons: Building with AddressSanitizer instrumentation")
+    env.Append(CPPFLAGS=["-fsanitize=address", "-fno-omit-frame-pointer", "-g"])
+    env.Append(LINKFLAGS=["-fsanitize=address"])
 
 if env["target"] in ["editor", "template_debug"]:
 	try:

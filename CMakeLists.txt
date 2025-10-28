@@ -47,6 +47,8 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Debug CACHE STRING "Build type" FORCE)
 endif()
 
+option(ENABLE_ASAN "Enable AddressSanitizer (address,undefined)" OFF)
+
 set(SOURCE
     ${CMAKE_CURRENT_SOURCE_DIR}/src/host/main.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/lv2_host.cpp
@@ -77,3 +79,9 @@ endif()
 
 find_package(SndFile CONFIG REQUIRED)
 target_link_libraries(lv2-host PRIVATE SndFile::sndfile)
+
+if(ENABLE_ASAN AND UNIX)
+    message(STATUS "Building with AddressSanitizer instrumentation")
+    target_compile_options(lv2-host PRIVATE -fsanitize=address -fno-omit-frame-pointer -g)
+    target_link_options(lv2-host PRIVATE -fsanitize=address)
+endif()

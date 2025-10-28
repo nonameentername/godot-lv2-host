@@ -15,6 +15,7 @@ cd $build_dir
 cmake -DCMAKE_BUILD_TYPE=Debug \
     -DCMAKE_VERBOSE_MAKEFILE=1 \
     $dir
+    #-DENABLE_ASAN=ON \
 
 # build godot-lv2-host
 
@@ -24,4 +25,4 @@ cmake -DCMAKE_BUILD_TYPE=Debug \
 # build godot-lv2-host (gdextension)
 
 cd $dir
-scons platform=linux target=template_debug dev_build=yes debug_symbols=yes
+scons platform=linux target=template_debug dev_build=yes debug_symbols=yes #asan=true

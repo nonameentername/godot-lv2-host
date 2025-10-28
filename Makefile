@@ -11,7 +11,7 @@ endif
 all: ubuntu
 
 dev-build:
-	scons platform=$(PLATFORM) target=template_debug dev_build=yes debug_symbols=yes compiledb=true
+	scons platform=$(PLATFORM) target=template_debug dev_build=yes debug_symbols=yes compiledb=true #asan=true
 
 UNAME := $(shell uname)
 ifeq ($(UNAME), Windows)

@@ -26,12 +26,12 @@ private:
     String unit;
     int def;
     int min;
-	int max;
-	bool logarithmic;
-	bool integer;
-	bool enumeration;
-	bool toggle;
-	Dictionary choices;
+    int max;
+    bool logarithmic;
+    bool integer;
+    bool enumeration;
+    bool toggle;
+    Dictionary choices;
 
 protected:
     static void _bind_methods();
@@ -61,17 +61,17 @@ public:
     void set_max(int p_max);
     int get_max();
 
-	void set_logarithmic(bool p_logarithmic);
-	bool get_logarithmic();
+    void set_logarithmic(bool p_logarithmic);
+    bool get_logarithmic();
 
-	void set_integer(bool p_integer);
-	bool get_integer();
+    void set_integer(bool p_integer);
+    bool get_integer();
 
-	void set_enumeration(bool p_enumeration);
-	bool get_enumeration();
+    void set_enumeration(bool p_enumeration);
+    bool get_enumeration();
 
-	void set_toggle(bool p_toggle);
-	bool get_toggle();
+    void set_toggle(bool p_toggle);
+    bool get_toggle();
 
     int get_choice_count();
     void set_choice(String p_label, float p_value);

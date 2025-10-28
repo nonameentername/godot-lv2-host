@@ -6,6 +6,7 @@ var slider_scene
 var dropdown_scene
 var container: VBoxContainer
 
+
 func _ready():
 	slider_scene = preload("res://lv2_control_slider.tscn")
 	dropdown_scene = preload("res://lv2_control_dropdown.tscn")

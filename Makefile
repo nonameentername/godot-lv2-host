@@ -13,6 +13,10 @@ all: ubuntu
 dev-build:
 	scons platform=$(PLATFORM) target=template_debug dev_build=yes debug_symbols=yes compiledb=true #asan=true
 
+format:
+	clang-format -i src/*.cpp src/*.h src/host/*.cpp
+	gdformat $(shell find -name '*.gd' ! -path './godot-cpp/*' ! -path './modules/godot/*')
+
 UNAME := $(shell uname)
 ifeq ($(UNAME), Windows)
     UID=1000

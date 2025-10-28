@@ -45,9 +45,11 @@ Vector2 EditorAudioMeterNotchesLv2::_get_minimum_size() const {
     float width = 0;
     float height = top_padding + btm_padding;
 
-    for (const EditorAudioMeterNotchesLv2::AudioNotch &notch : notches) { 
+    for (const EditorAudioMeterNotchesLv2::AudioNotch &notch : notches) {
         if (notch.render_db_value) {
-            width = MAX(width, font->get_string_size(String::num(Math::abs(notch.db_value)) + "dB", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x);
+            width = MAX(width, font->get_string_size(String::num(Math::abs(notch.db_value)) + "dB",
+                                                     HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
+                                   .x);
             height += font_height;
         }
     }
@@ -86,7 +88,7 @@ void EditorAudioMeterNotchesLv2::_notification(int p_what) {
 void EditorAudioMeterNotchesLv2::_draw_audio_notches() {
     float font_height = theme_cache.font->get_height(theme_cache.font_size);
 
-    for (const EditorAudioMeterNotchesLv2::AudioNotch &n : notches) { 
+    for (const EditorAudioMeterNotchesLv2::AudioNotch &n : notches) {
         draw_line(Vector2(0, (1.0f - n.relative_position) * (get_size().y - btm_padding - top_padding) + top_padding),
                   Vector2(line_length * editor_scale,
                           (1.0f - n.relative_position) * (get_size().y - btm_padding - top_padding) + top_padding),
@@ -108,8 +110,7 @@ void EditorAudioMeterNotchesLv2::_bind_methods() {
     ClassDB::bind_method(D_METHOD("_draw_audio_notches"), &EditorAudioMeterNotchesLv2::_draw_audio_notches);
 
     ClassDB::bind_method(D_METHOD("get_editor_scale"), &EditorAudioMeterNotchesLv2::get_editor_scale);
-    ClassDB::bind_method(D_METHOD("set_editor_scale", "editor_scale"),
-                         &EditorAudioMeterNotchesLv2::set_editor_scale);
+    ClassDB::bind_method(D_METHOD("set_editor_scale", "editor_scale"), &EditorAudioMeterNotchesLv2::set_editor_scale);
 
     ClassDB::add_property("EditorAudioMeterNotchesLv2", PropertyInfo(Variant::FLOAT, "editor_scale"),
                           "set_editor_scale", "get_editor_scale");

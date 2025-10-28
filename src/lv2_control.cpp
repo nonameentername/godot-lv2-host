@@ -159,8 +159,10 @@ void Lv2Control::_bind_methods() {
     ClassDB::add_property("Lv2Control", PropertyInfo(Variant::STRING, "default"), "set_default", "get_default");
     ClassDB::add_property("Lv2Control", PropertyInfo(Variant::STRING, "min"), "set_min", "get_min");
     ClassDB::add_property("Lv2Control", PropertyInfo(Variant::STRING, "max"), "set_max", "get_max");
-    ClassDB::add_property("Lv2Control", PropertyInfo(Variant::STRING, "logarithmic"), "set_logarithmic", "get_logarithmic");
+    ClassDB::add_property("Lv2Control", PropertyInfo(Variant::STRING, "logarithmic"), "set_logarithmic",
+                          "get_logarithmic");
     ClassDB::add_property("Lv2Control", PropertyInfo(Variant::STRING, "integer"), "set_integer", "get_integer");
-    ClassDB::add_property("Lv2Control", PropertyInfo(Variant::STRING, "enumeration"), "set_enumeration", "get_enumeration");
+    ClassDB::add_property("Lv2Control", PropertyInfo(Variant::STRING, "enumeration"), "set_enumeration",
+                          "get_enumeration");
     ClassDB::add_property("Lv2Control", PropertyInfo(Variant::STRING, "toggle"), "set_toggle", "get_toggle");
 }

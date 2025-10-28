@@ -5,14 +5,14 @@
 #include <godot_cpp/classes/resource_loader.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
 
-#include "lv2_layout.h"
-#include "lv2_server.h"
-#include "lv2_server_node.h"
 #include "godot_cpp/classes/engine.hpp"
 #include "godot_cpp/classes/os.hpp"
 #include "godot_cpp/core/error_macros.hpp"
 #include "godot_cpp/core/memory.hpp"
 #include "godot_cpp/variant/callable_method_pointer.hpp"
+#include "lv2_layout.h"
+#include "lv2_server.h"
+#include "lv2_server_node.h"
 #include "version_generated.gen.h"
 
 namespace godot {
@@ -75,7 +75,7 @@ Lv2Server *Lv2Server::get_singleton() {
 }
 
 void Lv2Server::add_property(String name, String default_value, GDExtensionVariantType extension_type,
-                                PropertyHint hint) {
+                             PropertyHint hint) {
     if (godot::Engine::get_singleton()->is_editor_hint() && !ProjectSettings::get_singleton()->has_setting(name)) {
         ProjectSettings::get_singleton()->set_setting(name, default_value);
         Dictionary property_info;
@@ -92,16 +92,16 @@ void Lv2Server::add_property(String name, String default_value, GDExtensionVaria
 
 void Lv2Server::initialize() {
     int mix_rate = AudioServer::get_singleton()->get_mix_rate();
-    //TODO: update block size
+    // TODO: update block size
     lv2_host = new Lv2Host(world, mix_rate, 512);
 
-	if (!lv2_host->load_world()) {
-        //TODO: log to godot
-		std::cerr << "Failed to create/load lv2 world\n";
-	}
+    if (!lv2_host->load_world()) {
+        // TODO: log to godot
+        std::cerr << "Failed to create/load lv2 world\n";
+    }
 
-    add_property("audio/lv2/default_lv2_layout", "res://default_lv2_layout.tres",
-                 GDEXTENSION_VARIANT_TYPE_STRING, PROPERTY_HINT_FILE);
+    add_property("audio/lv2/default_lv2_layout", "res://default_lv2_layout.tres", GDEXTENSION_VARIANT_TYPE_STRING,
+                 PROPERTY_HINT_FILE);
     add_property("audio/lv2/use_resource_files", "true", GDEXTENSION_VARIANT_TYPE_BOOL, PROPERTY_HINT_NONE);
     add_property("audio/lv2/hide_lv2_logs", "true", GDEXTENSION_VARIANT_TYPE_BOOL, PROPERTY_HINT_NONE);
 
@@ -204,7 +204,6 @@ void Lv2Server::set_lv2_count(int p_count) {
         if (!lv2_instances[i]->is_connected("lv2_ready", Callable(this, "on_lv2_ready"))) {
             lv2_instances[i]->connect("lv2_ready", Callable(this, "on_lv2_ready"), CONNECT_DEFERRED);
         }
-
     }
 
     emit_signal("lv2_layout_changed");
@@ -470,8 +469,7 @@ bool Lv2Server::load_default_lv2_layout() {
         return true;
     }
 
-    String layout_path =
-        ProjectSettings::get_singleton()->get_setting("audio/lv2/default_lv2_layout");
+    String layout_path = ProjectSettings::get_singleton()->get_setting("audio/lv2/default_lv2_layout");
 
     if (layout_path.is_empty() || layout_path.get_file() == "<null>") {
         layout_path = "res://default_lv2_layout.tres";
@@ -594,7 +592,7 @@ TypedArray<String> Lv2Server::get_plugins() {
 }
 
 String Lv2Server::get_plugin_name(String p_uri) {
-    //TODO: should this be cached?
+    // TODO: should this be cached?
     std::vector<LilvPluginInfo> plugins_info = lv2_host->get_plugins_info(true);
 
     for (int i = 0; i < plugins_info.size(); i++) {
@@ -664,8 +662,7 @@ void Lv2Server::_bind_methods() {
 
     ClassDB::bind_method(D_METHOD("get_lv2_channel_count", "lv2_idx"), &Lv2Server::get_lv2_channel_count);
 
-    ClassDB::bind_method(D_METHOD("set_lv2_volume_db", "lv2_idx", "volume_db"),
-                         &Lv2Server::set_lv2_volume_db);
+    ClassDB::bind_method(D_METHOD("set_lv2_volume_db", "lv2_idx", "volume_db"), &Lv2Server::set_lv2_volume_db);
     ClassDB::bind_method(D_METHOD("get_lv2_volume_db", "lv2_idx"), &Lv2Server::get_lv2_volume_db);
 
     ClassDB::bind_method(D_METHOD("set_lv2_uri", "lv2_idx", "uri"), &Lv2Server::set_lv2_uri);
@@ -683,8 +680,7 @@ void Lv2Server::_bind_methods() {
     ClassDB::bind_method(D_METHOD("get_lv2_channel_peak_volume_db", "lv2_idx", "channel"),
                          &Lv2Server::get_lv2_channel_peak_volume_db);
 
-    ClassDB::bind_method(D_METHOD("is_lv2_channel_active", "lv2_idx", "channel"),
-                         &Lv2Server::is_lv2_channel_active);
+    ClassDB::bind_method(D_METHOD("is_lv2_channel_active", "lv2_idx", "channel"), &Lv2Server::is_lv2_channel_active);
 
     ClassDB::bind_method(D_METHOD("lock"), &Lv2Server::lock);
     ClassDB::bind_method(D_METHOD("unlock"), &Lv2Server::unlock);
@@ -706,4 +702,4 @@ void Lv2Server::_bind_methods() {
     ADD_SIGNAL(MethodInfo("lv2_ready", PropertyInfo(Variant::STRING, "lv2_name")));
 }
 
-}
+} // namespace godot

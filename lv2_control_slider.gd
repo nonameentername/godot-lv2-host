@@ -41,7 +41,7 @@ func initialize(lv2_control: Lv2Control, value: float) -> void:
 		else:
 			slider.step = 0.01
 
-	var default : float = clamp(value, min_value, max_value)
+	var default: float = clamp(value, min_value, max_value)
 	_update_ui_from_parameter(default, false)
 
 

@@ -12,10 +12,10 @@
 #include <godot_cpp/templates/hash_map.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
-#include "lv2_instance.h"
-#include "lv2_layout.h"
 #include "godot_cpp/classes/mutex.hpp"
 #include "godot_cpp/classes/thread.hpp"
+#include "lv2_instance.h"
+#include "lv2_layout.h"
 
 namespace godot {
 

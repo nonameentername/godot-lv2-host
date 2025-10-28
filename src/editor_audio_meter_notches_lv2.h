@@ -72,4 +72,4 @@ public:
 
 } // namespace godot
 
-#endif //EDITOR_AUDIO_METER_NOTCHES_LV2_H
+#endif // EDITOR_AUDIO_METER_NOTCHES_LV2_H

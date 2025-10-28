@@ -9,7 +9,7 @@ var channel = 0
 
 func _ready():
 	editor = $lv2_editor
-	print ("godot-lv2-host version: ", Lv2Server.get_version(), " build: ", Lv2Server.get_build())
+	print("godot-lv2-host version: ", Lv2Server.get_version(), " build: ", Lv2Server.get_build())
 	Lv2Server.lv2_layout_changed.connect(_on_lv2_layout_changed)
 	Lv2Server.lv2_ready.connect(_on_lv2_ready)
 
@@ -23,17 +23,18 @@ func _on_lv2_ready(_lv2_name: String):
 	var input_controls: Array[Lv2Control] = lv2.get_input_controls()
 	for input_control in input_controls:
 		if input_control.logarithmic:
-			print (input_control.symbol, " - ", input_control.name)
-			print ("    min = ", input_control.min)
-			print ("    max = ", input_control.max)
+			print(input_control.symbol, " - ", input_control.name)
+			print("    min = ", input_control.min)
+			print("    max = ", input_control.max)
 			for key in input_control.get_choices():
 				var value = input_control.get_choices()[key]
-				print ("    ", key, " ", value)
+				print("    ", key, " ", value)
 
 	for preset in lv2.get_presets():
 		dropdown.add_item(preset)
 
 	editor.initialize(lv2)
+
 
 func _process(_delta):
 	pass

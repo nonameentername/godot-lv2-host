@@ -8,15 +8,14 @@
 #include <godot_cpp/core/defs.hpp>
 #include <godot_cpp/godot.hpp>
 
-#include "lv2_server.h"
-#include "lv2_instance.h"
-#include "lv2_server_node.h"
-#include "lv2_layout.h"
-#include "lv2_control.h"
 #include "audio_stream_lv2.h"
 #include "audio_stream_player_lv2.h"
 #include "editor_audio_meter_notches_lv2.h"
-
+#include "lv2_control.h"
+#include "lv2_instance.h"
+#include "lv2_layout.h"
+#include "lv2_server.h"
+#include "lv2_server_node.h"
 
 namespace godot {
 
@@ -38,7 +37,6 @@ void initialize_godot_lv2_host_module(ModuleInitializationLevel p_level) {
 
     lv2_server = memnew(Lv2Server);
     Engine::get_singleton()->register_singleton("Lv2Server", Lv2Server::get_singleton());
-
 }
 
 void uninitialize_godot_lv2_host_module(ModuleInitializationLevel p_level) {
@@ -54,8 +52,8 @@ void uninitialize_godot_lv2_host_module(ModuleInitializationLevel p_level) {
 extern "C" {
 // Initialization.
 GDExtensionBool GDE_EXPORT godot_lv2_host_library_init(GDExtensionInterfaceGetProcAddress p_get_proc_address,
-                                                      const GDExtensionClassLibraryPtr p_library,
-                                                      GDExtensionInitialization *r_initialization) {
+                                                       const GDExtensionClassLibraryPtr p_library,
+                                                       GDExtensionInitialization *r_initialization) {
     godot::GDExtensionBinding::InitObject init_obj(p_get_proc_address, p_library, r_initialization);
 
     init_obj.register_initializer(initialize_godot_lv2_host_module);
@@ -65,4 +63,4 @@ GDExtensionBool GDE_EXPORT godot_lv2_host_library_init(GDExtensionInterfaceGetPr
     return init_obj.init();
 }
 }
-}
+} // namespace godot

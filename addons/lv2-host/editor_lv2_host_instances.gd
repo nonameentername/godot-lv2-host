@@ -140,21 +140,13 @@ func _delete_lv2(editor_lv2_instance: EditorLv2Instance):
 	undo_redo.create_action("Delete Lv2 Plugin")
 	undo_redo.add_do_method(Lv2Server, "remove_lv2", index)
 	undo_redo.add_undo_method(Lv2Server, "add_lv2", index)
-	undo_redo.add_undo_method(
-		Lv2Server, "set_lv2_name", index, Lv2Server.get_lv2_name(index)
-	)
+	undo_redo.add_undo_method(Lv2Server, "set_lv2_name", index, Lv2Server.get_lv2_name(index))
 	undo_redo.add_undo_method(
 		Lv2Server, "set_lv2_volume_db", index, Lv2Server.get_lv2_volume_db(index)
 	)
-	undo_redo.add_undo_method(
-		Lv2Server, "set_lv2_solo", index, Lv2Server.is_lv2_solo(index)
-	)
-	undo_redo.add_undo_method(
-		Lv2Server, "set_lv2_mute", index, Lv2Server.is_lv2_mute(index)
-	)
-	undo_redo.add_undo_method(
-		Lv2Server, "set_lv2_bypass", index, Lv2Server.is_lv2_bypassing(index)
-	)
+	undo_redo.add_undo_method(Lv2Server, "set_lv2_solo", index, Lv2Server.is_lv2_solo(index))
+	undo_redo.add_undo_method(Lv2Server, "set_lv2_mute", index, Lv2Server.is_lv2_mute(index))
+	undo_redo.add_undo_method(Lv2Server, "set_lv2_bypass", index, Lv2Server.is_lv2_bypassing(index))
 
 	undo_redo.add_do_method(self, "_update_lv2")
 	undo_redo.add_undo_method(self, "_update_lv2")
@@ -171,12 +163,8 @@ func _duplicate_lv2(which: int):
 	undo_redo.add_do_method(
 		Lv2Server, "set_lv2_volume_db", add_at_pos, Lv2Server.get_lv2_volume_db(which)
 	)
-	undo_redo.add_do_method(
-		Lv2Server, "set_lv2_solo", add_at_pos, Lv2Server.is_lv2_solo(which)
-	)
-	undo_redo.add_do_method(
-		Lv2Server, "set_lv2_mute", add_at_pos, Lv2Server.is_lv2_mute(which)
-	)
+	undo_redo.add_do_method(Lv2Server, "set_lv2_solo", add_at_pos, Lv2Server.is_lv2_solo(which))
+	undo_redo.add_do_method(Lv2Server, "set_lv2_mute", add_at_pos, Lv2Server.is_lv2_mute(which))
 	undo_redo.add_do_method(
 		Lv2Server, "set_lv2_bypass", add_at_pos, Lv2Server.is_lv2_bypassing(which)
 	)
@@ -254,9 +242,7 @@ func _load_layout():
 
 
 func _load_default_layout():
-	var layout_path = ProjectSettings.get_setting_with_override(
-		"audio/lv2/default_lv2_layout"
-	)
+	var layout_path = ProjectSettings.get_setting_with_override("audio/lv2/default_lv2_layout")
 	var state = ResourceLoader.load(layout_path, "", ResourceLoader.CACHE_MODE_IGNORE)
 	if not state:
 		push_warning("There is no '%s' file." % layout_path)

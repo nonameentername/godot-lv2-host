@@ -1,7 +1,7 @@
 #include "audio_stream_lv2.h"
 #include "audio_stream_player_lv2.h"
-#include "lv2_server.h"
 #include "godot_cpp/classes/audio_stream.hpp"
+#include "lv2_server.h"
 
 namespace godot {
 
@@ -131,4 +131,4 @@ void AudioStreamLv2::_bind_methods() {
     ClassDB::bind_method(D_METHOD("lv2_ready", "lv2_name"), &AudioStreamLv2::lv2_ready);
 }
 
-}
+} // namespace godot

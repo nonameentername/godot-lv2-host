@@ -159,7 +159,7 @@ func _update_visiable_channels():
 			channel_container.remove_child(channel)
 
 	channels.clear()
-	channels.resize(Lv2Server.get_lv2_channel_count((get_index())))
+	channels.resize(Lv2Server.get_lv2_channel_count(get_index()))
 
 	for i in range(0, Lv2Server.get_lv2_channel_count(get_index())):
 		var channel: Channel = _create_channel()
@@ -173,18 +173,15 @@ func _update_visiable_channels():
 	named_channels.clear()
 
 
-
 func _process(_delta):
-	if (channels.size() != Lv2Server.get_lv2_channel_count(get_index())):
+	if channels.size() != Lv2Server.get_lv2_channel_count(get_index()):
 		_update_visiable_channels()
 
 	for i in range(0, channels.size()):
 		var real_peak = -100
 
 		if Lv2Server.is_lv2_channel_active(get_index(), i):
-			real_peak = max(
-				real_peak, Lv2Server.get_lv2_channel_peak_volume_db(get_index(), i)
-			)
+			real_peak = max(real_peak, Lv2Server.get_lv2_channel_peak_volume_db(get_index(), i))
 
 		_update_channel_vu(channels[i], real_peak)
 
@@ -290,10 +287,7 @@ func _value_changed(normalized):
 	undo_redo.create_action("Change Lv2 Volume", UndoRedo.MERGE_ENDS)
 	undo_redo.add_do_method(Lv2Server, "set_lv2_volume_db", get_index(), db)
 	undo_redo.add_undo_method(
-		Lv2Server,
-		"set_lv2_volume_db",
-		get_index(),
-		Lv2Server.get_lv2_volume_db(get_index())
+		Lv2Server, "set_lv2_volume_db", get_index(), Lv2Server.get_lv2_volume_db(get_index())
 	)
 	undo_redo.add_do_method(editor_lv2_instances, "_update_lv2_instance", get_index())
 	undo_redo.add_undo_method(editor_lv2_instances, "_update_lv2_instance", get_index())
@@ -523,10 +517,7 @@ func _bypass_toggled():
 	undo_redo.create_action("Toggle Lv2 bypass")
 	undo_redo.add_do_method(Lv2Server, "set_lv2_bypass", get_index(), bypass.is_pressed())
 	undo_redo.add_undo_method(
-		Lv2Server,
-		"set_lv2_bypass",
-		get_index(),
-		Lv2Server.is_lv2_bypassing(get_index())
+		Lv2Server, "set_lv2_bypass", get_index(), Lv2Server.is_lv2_bypassing(get_index())
 	)
 	undo_redo.add_do_method(editor_lv2_instances, "_update_lv2_instance", get_index())
 	undo_redo.add_undo_method(editor_lv2_instances, "_update_lv2_instance", get_index())
@@ -612,4 +603,3 @@ func _on_plugin_option_item_selected(index: int) -> void:
 	undo_redo.commit_action()
 
 	updating_lv2 = false
-

@@ -2,8 +2,8 @@
 #define LV2_INSTANCE_H
 
 #include "godot_cpp/classes/mutex.hpp"
-#include "godot_cpp/classes/thread.hpp"
 #include "godot_cpp/classes/semaphore.hpp"
+#include "godot_cpp/classes/thread.hpp"
 #include "godot_cpp/variant/typed_array.hpp"
 #include "lilv/lilv.h"
 #include "lv2_control.h"
@@ -19,8 +19,8 @@
 #include <godot_cpp/templates/vector.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
-#include <lv2_host.h>
 #include <lv2_circular_buffer.h>
+#include <lv2_host.h>
 
 static const float AUDIO_PEAK_OFFSET = 0.0000000001f;
 static const float AUDIO_MIN_PEAK_DB = -200.0f;

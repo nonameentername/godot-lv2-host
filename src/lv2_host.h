@@ -9,12 +9,12 @@
 #include <lv2/midi/midi.h>
 #include <lv2/options/options.h>
 #include <lv2/parameters/parameters.h>
-#include <lv2/state/state.h>
-#include <lv2/urid/urid.h>
-#include <lv2/worker/worker.h>
-#include <lv2/units/units.h>
 #include <lv2/port-props/port-props.h>
 #include <lv2/presets/presets.h>
+#include <lv2/state/state.h>
+#include <lv2/units/units.h>
+#include <lv2/urid/urid.h>
+#include <lv2/worker/worker.h>
 
 #include <lilv/lilv.h>
 
@@ -59,11 +59,11 @@ struct AtomOut {
 };
 
 struct MidiEvent {
-	static constexpr const uint32_t DATA_SIZE = 3;
+    static constexpr const uint32_t DATA_SIZE = 3;
 
-	int frame{};
-	uint8_t data[DATA_SIZE];
-	int size = DATA_SIZE;
+    int frame{};
+    uint8_t data[DATA_SIZE];
+    int size = DATA_SIZE;
 };
 
 struct LilvControl {
@@ -73,12 +73,12 @@ struct LilvControl {
     std::string unit;
     int def;
     int min;
-	int max;
-	bool logarithmic;
-	bool integer;
-	bool enumeration;
-	bool toggle;
-	std::vector<std::pair<std::string, float>> choices;
+    int max;
+    bool logarithmic;
+    bool integer;
+    bool enumeration;
+    bool toggle;
+    std::vector<std::pair<std::string, float>> choices;
 };
 
 struct LilvPluginInfo {
@@ -97,7 +97,7 @@ private:
     // helpers
     std::string port_symbol(const LilvPort *cport) const;
 
-	uint32_t lookup_port_index_by_symbol(const char* sym) const;
+    uint32_t lookup_port_index_by_symbol(const char *sym) const;
 
     // config
     double sr{};
@@ -123,8 +123,8 @@ private:
     LV2_Feature feat_map{};
     LV2_URID next_urid{1};
     std::unordered_map<std::string, LV2_URID> dict;
-	std::unordered_map<LV2_URID, std::string> rev;
-	std::unordered_map<std::string, uint32_t> symbol_to_index;
+    std::unordered_map<LV2_URID, std::string> rev;
+    std::unordered_map<std::string, uint32_t> symbol_to_index;
 
     // URID unmap
     LV2_URID_Unmap unmap{};
@@ -206,7 +206,7 @@ private:
     static LV2_Worker_Status s_worker_respond(LV2_Worker_Respond_Handle, uint32_t size, const void *data);
 
 public:
-    Lv2Host(LilvWorld* p_world, double sr, int p_frames, uint32_t seq_bytes = 4096);
+    Lv2Host(LilvWorld *p_world, double sr, int p_frames, uint32_t seq_bytes = 4096);
     ~Lv2Host();
 
     Lv2Host(const Lv2Host &) = delete;
@@ -230,7 +230,7 @@ public:
     void deactivate();
 
     std::vector<std::string> get_presets();
-	void load_preset(std::string preset);
+    void load_preset(std::string preset);
 
     void wire_worker_interface();
 
@@ -248,11 +248,11 @@ public:
     float *get_input_channel_buffer(int p_channel);
     float *get_output_channel_buffer(int p_channel);
 
-	void write_midi_in(int p_bus, const MidiEvent& p_midi_event);
-	bool read_midi_in(int p_bus, MidiEvent& p_midi_event);
+    void write_midi_in(int p_bus, const MidiEvent &p_midi_event);
+    bool read_midi_in(int p_bus, MidiEvent &p_midi_event);
 
-	void write_midi_out(int p_bus, const MidiEvent& p_midi_event);
-	bool read_midi_out(int p_bus, MidiEvent& p_midi_event);
+    void write_midi_out(int p_bus, const MidiEvent &p_midi_event);
+    bool read_midi_out(int p_bus, MidiEvent &p_midi_event);
 
     const LilvControl *get_input_control(int p_index);
     const LilvControl *get_output_control(int p_index);
@@ -266,16 +266,10 @@ public:
     void rt_deliver_worker_responses();
     void non_rt_do_worker_requests();
 
-	static void s_set_port_value(const char* port_symbol,
-			void*       user_data,
-			const void* value,
-			uint32_t    size,
-			uint32_t    type_urid);
+    static void s_set_port_value(const char *port_symbol, void *user_data, const void *value, uint32_t size,
+                                 uint32_t type_urid);
 
-	void set_port_value_impl(const char* port_symbol,
-			const void* value,
-			uint32_t    size,
-			uint32_t    type_urid);
+    void set_port_value_impl(const char *port_symbol, const void *value, uint32_t size, uint32_t type_urid);
 };
 
 } // namespace godot

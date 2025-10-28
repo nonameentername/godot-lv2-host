@@ -15,7 +15,7 @@ func initialize(lv2_control: Lv2Control, value: float) -> void:
 	integer = lv2_control.integer
 
 	label.text = lv2_control.name
-	
+
 	var choices = lv2_control.get_choices()
 	for choice in choices:
 		dropdown.add_item(choice, choices[choice])

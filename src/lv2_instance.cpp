@@ -1,13 +1,13 @@
 #include "lv2_instance.h"
-#include "lv2_control.h"
-#include "lv2_server.h"
 #include "godot_cpp/classes/audio_server.hpp"
-#include "godot_cpp/classes/audio_stream_wav.hpp"
 #include "godot_cpp/classes/audio_stream_mp3.hpp"
+#include "godot_cpp/classes/audio_stream_wav.hpp"
 #include "godot_cpp/classes/project_settings.hpp"
 #include "godot_cpp/classes/time.hpp"
 #include "godot_cpp/variant/utility_functions.hpp"
 #include "godot_cpp/variant/variant.hpp"
+#include "lv2_control.h"
+#include "lv2_server.h"
 #include <cstdio>
 #include <cstdlib>
 
@@ -28,14 +28,14 @@ Lv2Instance::Lv2Instance() {
     world = Lv2Server::get_singleton()->get_lilv_world();
     mix_rate = AudioServer::get_singleton()->get_mix_rate();
 
-    //TODO: update block size
+    // TODO: update block size
     int p_frames = 512;
     lv2_host = new Lv2Host(world, mix_rate, p_frames);
 
-	if (!lv2_host->load_world()) {
-        //TODO: log to godot
-		std::cerr << "Failed to create/load lv2 world\n";
-	}
+    if (!lv2_host->load_world()) {
+        // TODO: log to godot
+        std::cerr << "Failed to create/load lv2 world\n";
+    }
 
     mutex.instantiate();
     semaphore.instantiate();
@@ -50,24 +50,24 @@ Lv2Instance::Lv2Instance() {
 void Lv2Instance::configure_lv2() {
     lock();
 
-	if (!lv2_host->find_plugin(std::string(uri.ascii()))) {
-		std::cerr << "Plugin not found: " << uri.ascii() << "\n";
-	}
+    if (!lv2_host->find_plugin(std::string(uri.ascii()))) {
+        std::cerr << "Plugin not found: " << uri.ascii() << "\n";
+    }
 
-	if (!lv2_host->instantiate()) {
-		std::cerr << "Failed to instantiate plugin\n";
-	}
+    if (!lv2_host->instantiate()) {
+        std::cerr << "Failed to instantiate plugin\n";
+    }
 
     std::vector<std::pair<std::string, float>> cli_sets;
 
-	lv2_host->wire_worker_interface();
-	lv2_host->set_cli_control_overrides(cli_sets);
+    lv2_host->wire_worker_interface();
+    lv2_host->set_cli_control_overrides(cli_sets);
 
-    //TODO: use the block from godot instead of 512
+    // TODO: use the block from godot instead of 512
     int p_frames = 512;
-	if (!lv2_host->prepare_ports_and_buffers(p_frames)) {
-		std::cerr << "Failed to prepare/connect ports\n";
-	}
+    if (!lv2_host->prepare_ports_and_buffers(p_frames)) {
+        std::cerr << "Failed to prepare/connect ports\n";
+    }
 
     for (int i = 0; i < lv2_host->get_input_control_count(); i++) {
         const LilvControl *control = lv2_host->get_input_control(i);
@@ -178,8 +178,8 @@ void Lv2Instance::reset() {
         if (prev_initialized) {
             cleanup_channels();
         }
-        //TODO: handle resetting the host
-        //lv2_host->Reset();
+        // TODO: handle resetting the host
+        // lv2_host->Reset();
         configure_lv2();
     }
 }
@@ -266,7 +266,7 @@ void Lv2Instance::set_channel_sample(AudioFrame *p_buffer, float p_rate, int p_f
         input_channels[right].write_channel(temp_buffer.ptrw(), p_frames);
     }
 
-    //TODO: does lv2 expect empty channels to be sent?
+    // TODO: does lv2 expect empty channels to be sent?
 
     unlock();
 }
@@ -317,7 +317,7 @@ void Lv2Instance::note_on(int midi_bus, int chan, int key, int vel) {
 
     MidiEvent event;
 
-    //TODO: move the midi bit logic to a shared function
+    // TODO: move the midi bit logic to a shared function
     if (vel > 0) {
         event.data[0] = (MIDIMessage::MIDI_MESSAGE_NOTE_ON << 4) | (chan & 0x0F);
     } else {
@@ -342,7 +342,6 @@ void Lv2Instance::note_off(int midi_bus, int chan, int key) {
 
     lv2_host->write_midi_in(midi_bus, event);
 }
-
 
 void Lv2Instance::control_change(int midi_bus, int chan, int control, int value) {
     if (!initialized) {
@@ -461,7 +460,8 @@ void Lv2Instance::thread_func() {
         }
 
         for (int channel = 0; channel < output_channels.size(); channel++) {
-            output_channels[channel].peak_volume = godot::UtilityFunctions::linear_to_db(channel_peak[channel] + AUDIO_PEAK_OFFSET);
+            output_channels[channel].peak_volume =
+                godot::UtilityFunctions::linear_to_db(channel_peak[channel] + AUDIO_PEAK_OFFSET);
 
             if (channel_peak[channel] > 0) {
                 output_channels[channel].active = true;
@@ -603,10 +603,12 @@ void Lv2Instance::_bind_methods() {
     ClassDB::bind_method(D_METHOD("note_off", "chan", "key"), &Lv2Instance::note_off);
     ClassDB::bind_method(D_METHOD("control_change", "chan", "control", "key"), &Lv2Instance::control_change);
 
-    ClassDB::bind_method(D_METHOD("send_input_control_channel", "channel", "value"), &Lv2Instance::send_input_control_channel);
+    ClassDB::bind_method(D_METHOD("send_input_control_channel", "channel", "value"),
+                         &Lv2Instance::send_input_control_channel);
     ClassDB::bind_method(D_METHOD("get_input_control_channel", "channel"), &Lv2Instance::get_input_control_channel);
 
-    ClassDB::bind_method(D_METHOD("send_output_control_channel", "channel", "value"), &Lv2Instance::send_output_control_channel);
+    ClassDB::bind_method(D_METHOD("send_output_control_channel", "channel", "value"),
+                         &Lv2Instance::send_output_control_channel);
     ClassDB::bind_method(D_METHOD("get_output_control_channel", "channel"), &Lv2Instance::get_output_control_channel);
 
     ClassDB::bind_method(D_METHOD("pitch_bend", "chan", "vel"), &Lv2Instance::pitch_bend);
@@ -620,10 +622,9 @@ void Lv2Instance::_bind_methods() {
     ClassDB::bind_method(D_METHOD("get_presets"), &Lv2Instance::get_presets);
     ClassDB::bind_method(D_METHOD("load_preset", "preset"), &Lv2Instance::load_preset);
 
-    ClassDB::add_property("Lv2Instance", PropertyInfo(Variant::STRING, "lv2_name"), "set_lv2_name",
-                          "get_lv2_name");
+    ClassDB::add_property("Lv2Instance", PropertyInfo(Variant::STRING, "lv2_name"), "set_lv2_name", "get_lv2_name");
 
     ADD_SIGNAL(MethodInfo("lv2_ready", PropertyInfo(Variant::STRING, "lv2_name")));
 }
 
-}
+} // namespace godot

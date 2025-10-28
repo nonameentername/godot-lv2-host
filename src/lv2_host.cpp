@@ -5,7 +5,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-//#include <exception>
+// #include <exception>
 #include <iostream>
 #include <vector>
 
@@ -16,7 +16,7 @@ static inline const char *cstr_or(const char *s, const char *fb = "") {
     return s ? s : fb;
 }
 static inline std::string to_string_safe(const char *s, const char *fb = "") {
-    const char* value = s ? s : fb;
+    const char *value = s ? s : fb;
     return std::string(value);
 }
 
@@ -28,7 +28,6 @@ static inline std::string to_string_safe(const char *s, const char *fb = "") {
 #else
 #define LV2HOST_DBG 0
 #endif
-
 
 // ===================== Canary helpers (debug only) =====================
 #if LV2HOST_DBG
@@ -100,8 +99,7 @@ static inline bool tail_guard_ok(const std::vector<float> &v) {
 #endif // LV2HOST_DBG
 
 // ===== Lv2Host =====
-Lv2Host::Lv2Host(LilvWorld *p_world, double sr, int p_frames, uint32_t seq_bytes)
-    : sr(sr), seq_bytes(seq_bytes) {
+Lv2Host::Lv2Host(LilvWorld *p_world, double sr, int p_frames, uint32_t seq_bytes) : sr(sr), seq_bytes(seq_bytes) {
 
     world = p_world;
 
@@ -217,7 +215,7 @@ Lv2Host::~Lv2Host() {
 }
 
 bool Lv2Host::load_world() {
-    //world = lilv_world_new();
+    // world = lilv_world_new();
     if (!world) {
         return false;
     }
@@ -233,7 +231,7 @@ bool Lv2Host::load_world() {
     BUFTYPE = lilv_new_uri(world, LV2_ATOM__bufferType);
     SUPPORTS = lilv_new_uri(world, LV2_ATOM__supports);
     MIDI_EVENT = lilv_new_uri(world, LV2_MIDI__MidiEvent);
-	PRESETS = lilv_new_uri(world, LV2_PRESETS__Preset);
+    PRESETS = lilv_new_uri(world, LV2_PRESETS__Preset);
     return true;
 }
 
@@ -246,7 +244,7 @@ std::vector<LilvPluginInfo> Lv2Host::get_plugins_info(bool include_name) {
         LilvPluginInfo plugin_info = LilvPluginInfo();
         plugin_info.uri = lilv_node_as_string(node);
 
-        //including the name is super slow.
+        // including the name is super slow.
         if (include_name) {
             LilvNode *plugin_name = lilv_plugin_get_name(p);
             plugin_info.name = lilv_node_as_string(plugin_name);
@@ -268,7 +266,7 @@ bool Lv2Host::find_plugin(const std::string &plugin_uri) {
         const LilvPlugin *p = lilv_plugins_get(plugins, i);
         const LilvNode *node = lilv_plugin_get_uri(p);
 
-        //TODO: turn on/off logging
+        // TODO: turn on/off logging
         if (false) {
             std::cout << "plugin name: " << lilv_node_as_string(node) << "\n";
         }
@@ -366,8 +364,10 @@ std::string Lv2Host::port_symbol(const LilvPort *cport) const {
     return to_string_safe(s);
 }
 
-uint32_t Lv2Host::lookup_port_index_by_symbol(const char* sym) const {
-    if (!sym) return UINT32_MAX;
+uint32_t Lv2Host::lookup_port_index_by_symbol(const char *sym) const {
+    if (!sym) {
+        return UINT32_MAX;
+    }
     auto it = symbol_to_index.find(sym);
     return (it == symbol_to_index.end()) ? UINT32_MAX : it->second;
 }
@@ -565,9 +565,9 @@ bool Lv2Host::prepare_ports_and_buffers(int p_frames) {
         }
     }
 
-    //create midi buffers
-	midi_input_buffer.resize(atom_inputs.size());
-	midi_output_buffer.resize(atom_outputs.size());
+    // create midi buffers
+    midi_input_buffer.resize(atom_inputs.size());
+    midi_output_buffer.resize(atom_outputs.size());
 
     // audio buffers
     channels = std::max(num_audio_out, num_audio_in);
@@ -665,7 +665,6 @@ bool Lv2Host::prepare_ports_and_buffers(int p_frames) {
         bool is_input = lilv_port_is_a(plugin, port, INPUT);
         bool is_output = lilv_port_is_a(plugin, port, OUTPUT);
 
-
         if (is_control) {
             std::string sym = port_symbol(port);
 
@@ -673,7 +672,7 @@ bool Lv2Host::prepare_ports_and_buffers(int p_frames) {
             std::string name = lilv_node_as_string(node_name);
             lilv_node_free(node_name);
 
-            //TODO: What should the default be when they are not specified?
+            // TODO: What should the default be when they are not specified?
             float def = 0;
             float min = 0;
             float max = 1;
@@ -698,63 +697,63 @@ bool Lv2Host::prepare_ports_and_buffers(int p_frames) {
                 lilv_node_free(max_node);
             }
 
-			LilvNode* units_unit_uri = lilv_new_uri(world, LV2_UNITS__unit);
-			LilvNodes* unit_values = lilv_port_get_value(plugin, port, units_unit_uri);
-			const LilvNode* unit_value = nullptr;
+            LilvNode *units_unit_uri = lilv_new_uri(world, LV2_UNITS__unit);
+            LilvNodes *unit_values = lilv_port_get_value(plugin, port, units_unit_uri);
+            const LilvNode *unit_value = nullptr;
 
-			if (unit_values && lilv_nodes_size(unit_values) > 0) {
-				LILV_FOREACH(nodes, it, unit_values) {
-					unit_value = lilv_nodes_get(unit_values, it);
-					break;
-				}
-			}
+            if (unit_values && lilv_nodes_size(unit_values) > 0) {
+                LILV_FOREACH(nodes, it, unit_values) {
+                    unit_value = lilv_nodes_get(unit_values, it);
+                    break;
+                }
+            }
 
-			std::string unit;
+            std::string unit;
 
-			if (unit_value && lilv_node_is_uri(unit_value)) {
-				unit = lilv_node_as_uri(unit_value);
-				if (unit.rfind(LV2_UNITS_PREFIX) == 0) {
-					unit = unit.substr(strlen(LV2_UNITS_PREFIX));
-				}
-			}
+            if (unit_value && lilv_node_is_uri(unit_value)) {
+                unit = lilv_node_as_uri(unit_value);
+                if (unit.rfind(LV2_UNITS_PREFIX) == 0) {
+                    unit = unit.substr(strlen(LV2_UNITS_PREFIX));
+                }
+            }
 
             if (unit_values) {
                 lilv_nodes_free(unit_values);
             }
 
-			lilv_node_free(units_unit_uri);
+            lilv_node_free(units_unit_uri);
 
-			LilvNodes* props = lilv_port_get_properties(plugin, port);
-			LilvNode* log_uri = lilv_new_uri(world, LV2_PORT_PROPS__logarithmic);
-			bool is_logarithmic = lilv_nodes_contains(props, log_uri);
+            LilvNodes *props = lilv_port_get_properties(plugin, port);
+            LilvNode *log_uri = lilv_new_uri(world, LV2_PORT_PROPS__logarithmic);
+            bool is_logarithmic = lilv_nodes_contains(props, log_uri);
 
-			lilv_node_free(log_uri);
+            lilv_node_free(log_uri);
 
-			auto has_prop = [&](const char* uri){
-				LilvNode* n = lilv_new_uri(world, uri);
-				bool ok = props && lilv_nodes_contains(props, n);
-				lilv_node_free(n);
-				return ok;
-			};
+            auto has_prop = [&](const char *uri) {
+                LilvNode *n = lilv_new_uri(world, uri);
+                bool ok = props && lilv_nodes_contains(props, n);
+                lilv_node_free(n);
+                return ok;
+            };
 
-			bool is_integer = has_prop(LV2_CORE__integer);
-			bool is_enum    = has_prop(LV2_CORE__enumeration);
-			bool is_toggle  = has_prop(LV2_CORE__toggled);
+            bool is_integer = has_prop(LV2_CORE__integer);
+            bool is_enum = has_prop(LV2_CORE__enumeration);
+            bool is_toggle = has_prop(LV2_CORE__toggled);
 
-			// Scale points (for enums)
-			const LilvScalePoints* sps = lilv_port_get_scale_points(plugin, port);
-			std::vector<std::pair<std::string, float>> choices;
-			if (sps && lilv_scale_points_size(sps) > 0) {
-				LILV_FOREACH(scale_points, it, sps) {
-					const LilvScalePoint* sp = lilv_scale_points_get(sps, it);
-					const LilvNode* lab = lilv_scale_point_get_label(sp);
-					const LilvNode* val = lilv_scale_point_get_value(sp);
-					choices.emplace_back(lilv_node_as_string(lab), lilv_node_as_float(val));
-				}
-			}
-			lilv_nodes_free(props);
+            // Scale points (for enums)
+            const LilvScalePoints *sps = lilv_port_get_scale_points(plugin, port);
+            std::vector<std::pair<std::string, float>> choices;
+            if (sps && lilv_scale_points_size(sps) > 0) {
+                LILV_FOREACH(scale_points, it, sps) {
+                    const LilvScalePoint *sp = lilv_scale_points_get(sps, it);
+                    const LilvNode *lab = lilv_scale_point_get_label(sp);
+                    const LilvNode *val = lilv_scale_point_get_value(sp);
+                    choices.emplace_back(lilv_node_as_string(lab), lilv_node_as_float(val));
+                }
+            }
+            lilv_nodes_free(props);
 
-            //TODO: Also provide the control properties and additional attributes
+            // TODO: Also provide the control properties and additional attributes
 
             LilvControl control;
             control.index = i;
@@ -767,8 +766,8 @@ bool Lv2Host::prepare_ports_and_buffers(int p_frames) {
             control.logarithmic = is_logarithmic;
             control.integer = is_integer;
             control.enumeration = is_enum;
-			control.toggle = is_toggle;
-			control.choices = choices;
+            control.toggle = is_toggle;
+            control.choices = choices;
 
             if (is_input) {
                 control_inputs.push_back(control);
@@ -780,15 +779,15 @@ bool Lv2Host::prepare_ports_and_buffers(int p_frames) {
         }
     }
 
-	symbol_to_index.clear();
+    symbol_to_index.clear();
 
-	for (uint32_t i = 0; i < num_ports; ++i) {
-		const LilvPort* port = lilv_plugin_get_port_by_index(plugin, i);
-		const LilvNode* symbol = lilv_port_get_symbol(plugin, port);
-		if (symbol) {
-			symbol_to_index[lilv_node_as_string(symbol)] = i;
-		}
-	}
+    for (uint32_t i = 0; i < num_ports; ++i) {
+        const LilvPort *port = lilv_plugin_get_port_by_index(plugin, i);
+        const LilvNode *symbol = lilv_port_get_symbol(plugin, port);
+        if (symbol) {
+            symbol_to_index[lilv_node_as_string(symbol)] = i;
+        }
+    }
 
     return true;
 }
@@ -806,22 +805,22 @@ void Lv2Host::deactivate() {
 }
 
 std::vector<std::string> Lv2Host::get_presets() {
-	std::vector<std::string> result;
+    std::vector<std::string> result;
     if (plugin) {
-        LilvNodes* presets = lilv_plugin_get_related(plugin, PRESETS);
+        LilvNodes *presets = lilv_plugin_get_related(plugin, PRESETS);
 
-		LILV_FOREACH(nodes, i, presets) {
-			const LilvNode* preset_node = lilv_nodes_get(presets, i);
+        LILV_FOREACH(nodes, i, presets) {
+            const LilvNode *preset_node = lilv_nodes_get(presets, i);
 
-			lilv_world_load_resource(world, preset_node);
+            lilv_world_load_resource(world, preset_node);
 
-			LilvState* st = lilv_state_new_from_world(world, &map, preset_node);
+            LilvState *st = lilv_state_new_from_world(world, &map, preset_node);
 
-			if (!st) {
-				continue;
-			}
+            if (!st) {
+                continue;
+            }
 
-			const char* label = lilv_state_get_label(st);
+            const char *label = lilv_state_get_label(st);
 
             if (label) {
                 result.push_back(label);
@@ -830,122 +829,117 @@ std::vector<std::string> Lv2Host::get_presets() {
             }
 
             lilv_state_free(st);
-		}
-        
+        }
+
         if (presets) {
             lilv_nodes_free(presets);
         }
     }
 
-	return result;
+    return result;
 }
 
 void Lv2Host::load_preset(std::string preset) {
     if (plugin) {
-        LilvNodes* presets = lilv_plugin_get_related(plugin, PRESETS);
+        LilvNodes *presets = lilv_plugin_get_related(plugin, PRESETS);
 
-		LILV_FOREACH(nodes, i, presets) {
-			const LilvNode* preset_node = lilv_nodes_get(presets, i);
+        LILV_FOREACH(nodes, i, presets) {
+            const LilvNode *preset_node = lilv_nodes_get(presets, i);
 
-			lilv_world_load_resource(world, preset_node);
+            lilv_world_load_resource(world, preset_node);
 
-			LilvState* st = lilv_state_new_from_world(world, &map, preset_node);
+            LilvState *st = lilv_state_new_from_world(world, &map, preset_node);
 
-			if (!st) {
-				continue;
-			}
+            if (!st) {
+                continue;
+            }
 
-			const char* label = lilv_state_get_label(st);
-			if (preset == label) {
-				lilv_state_restore(st,
-						inst,
-						&Lv2Host::s_set_port_value,
-						this,
-						0,
-						features);           
-			}
+            const char *label = lilv_state_get_label(st);
+            if (preset == label) {
+                lilv_state_restore(st, inst, &Lv2Host::s_set_port_value, this, 0, features);
+            }
 
             lilv_state_free(st);
-		}
+        }
 
         if (presets) {
             lilv_nodes_free(presets);
         }
-	}
+    }
 }
 
 int Lv2Host::perform(int p_frames) {
     rt_deliver_worker_responses();
 
-	for (int i = 0; i < atom_inputs.size(); i++) {
-		AtomIn &atom_input = atom_inputs[i];
+    for (int i = 0; i < atom_inputs.size(); i++) {
+        AtomIn &atom_input = atom_inputs[i];
         const uint32_t bytes = (uint32_t)(atom_input.buf.size() * sizeof(std::max_align_t));
-        lv2_atom_forge_set_buffer(&atom_input.forge, reinterpret_cast<uint8_t*>(atom_input.buf.data()), bytes);
+        lv2_atom_forge_set_buffer(&atom_input.forge, reinterpret_cast<uint8_t *>(atom_input.buf.data()), bytes);
         LV2_Atom_Forge_Frame seq_frame;
         lv2_atom_forge_sequence_head(&atom_input.forge, &seq_frame, urids.atom_FrameTime);
 
         MidiEvent midi_event{};
 
-		while(read_midi_in(i, midi_event)) {
-			lv2_atom_forge_frame_time(&atom_input.forge, midi_event.frame);
-			lv2_atom_forge_atom(&atom_input.forge, midi_event.size, urids.midi_MidiEvent);
-			lv2_atom_forge_write(&atom_input.forge, midi_event.data, midi_event.size);
-		}
+        while (read_midi_in(i, midi_event)) {
+            lv2_atom_forge_frame_time(&atom_input.forge, midi_event.frame);
+            lv2_atom_forge_atom(&atom_input.forge, midi_event.size, urids.midi_MidiEvent);
+            lv2_atom_forge_write(&atom_input.forge, midi_event.data, midi_event.size);
+        }
 
-		lv2_atom_forge_pop(&atom_input.forge, &seq_frame);
+        lv2_atom_forge_pop(&atom_input.forge, &seq_frame);
 
-        atom_input.seq = reinterpret_cast<LV2_Atom_Sequence*>(atom_input.buf.data());
+        atom_input.seq = reinterpret_cast<LV2_Atom_Sequence *>(atom_input.buf.data());
     }
 
     // 3) Prepare Atom OUTPUTS: mark empty for this block
-	for (auto& atom_output : atom_outputs) {
-		const uint32_t buf_bytes = (uint32_t)(atom_output.buf.size() * sizeof(std::max_align_t));
-		const uint32_t body_capacity = (buf_bytes > sizeof(LV2_Atom)) ? (buf_bytes - (uint32_t)sizeof(LV2_Atom)) : 0u;
+    for (auto &atom_output : atom_outputs) {
+        const uint32_t buf_bytes = (uint32_t)(atom_output.buf.size() * sizeof(std::max_align_t));
+        const uint32_t body_capacity = (buf_bytes > sizeof(LV2_Atom)) ? (buf_bytes - (uint32_t)sizeof(LV2_Atom)) : 0u;
 
-		atom_output.seq->atom.type = urids.atom_Sequence;
-		atom_output.seq->atom.size = body_capacity;
+        atom_output.seq->atom.type = urids.atom_Sequence;
+        atom_output.seq->atom.size = body_capacity;
 
-    	std::memset(LV2_ATOM_BODY(&atom_output.seq->atom), 0, body_capacity);
+        std::memset(LV2_ATOM_BODY(&atom_output.seq->atom), 0, body_capacity);
 
-		auto* body = (LV2_Atom_Sequence_Body*)LV2_ATOM_BODY(&atom_output.seq->atom);
-		body->unit = urids.atom_FrameTime;
-		body->pad  = 0;
-	}
+        auto *body = (LV2_Atom_Sequence_Body *)LV2_ATOM_BODY(&atom_output.seq->atom);
+        body->unit = urids.atom_FrameTime;
+        body->pad = 0;
+    }
 
     // 4) Run DSP for this block
     lilv_instance_run(inst, p_frames);
 
-    //TODO: reading is not working right now... or is it?
-    // 5) Collect OUTPUT events → ABSOLUTE time → out ring
-	for (int i = 0; i < atom_outputs.size(); i++) {
-		AtomOut &atom_output = atom_outputs[i];
-        auto* seq = atom_output.seq;
-		if (seq->atom.size <= sizeof(LV2_Atom_Sequence_Body)) {
-			continue;
-		}
-		LV2_ATOM_SEQUENCE_FOREACH(seq, ev) {
-			if (ev->body.type != urids.midi_MidiEvent) {
-				continue;
-			}
+    // TODO: reading is not working right now... or is it?
+    //  5) Collect OUTPUT events → ABSOLUTE time → out ring
+    for (int i = 0; i < atom_outputs.size(); i++) {
+        AtomOut &atom_output = atom_outputs[i];
+        auto *seq = atom_output.seq;
+        if (seq->atom.size <= sizeof(LV2_Atom_Sequence_Body)) {
+            continue;
+        }
+        LV2_ATOM_SEQUENCE_FOREACH(seq, ev) {
+            if (ev->body.type != urids.midi_MidiEvent) {
+                continue;
+            }
 
-            const auto* body = (const uint8_t*)LV2_ATOM_BODY(&ev->body);
-			if (!body || ev->body.size == 0) {
-				continue;
-			}
+            const auto *body = (const uint8_t *)LV2_ATOM_BODY(&ev->body);
+            if (!body || ev->body.size == 0) {
+                continue;
+            }
             MidiEvent midi_event{};
             midi_event.frame = ev->time.frames;
-            midi_event.size  = std::min<uint32_t>(ev->body.size, 3u);
-			for (uint32_t j = 0; j < midi_event.size; ++j) {
-				midi_event.data[j] = body[j];
-			}
-			write_midi_out(i, midi_event);
+            midi_event.size = std::min<uint32_t>(ev->body.size, 3u);
+            for (uint32_t j = 0; j < midi_event.size; ++j) {
+                midi_event.data[j] = body[j];
+            }
+            write_midi_out(i, midi_event);
         }
     }
 
     // 6) Non-RT worker requests
     non_rt_do_worker_requests();
 
-	return p_frames;
+    return p_frames;
 }
 
 int Lv2Host::get_input_channel_count() {
@@ -957,7 +951,8 @@ int Lv2Host::get_output_channel_count() {
 }
 
 int Lv2Host::get_input_midi_count() {
-    return atom_inputs.size();;
+    return atom_inputs.size();
+    ;
 }
 
 int Lv2Host::get_output_midi_count() {
@@ -965,7 +960,8 @@ int Lv2Host::get_output_midi_count() {
 }
 
 int Lv2Host::get_input_control_count() {
-    return control_inputs.size();;
+    return control_inputs.size();
+    ;
 }
 
 int Lv2Host::get_output_control_count() {
@@ -980,53 +976,53 @@ float *Lv2Host::get_output_channel_buffer(int p_channel) {
     return audio_out_ptrs[p_channel];
 }
 
-void Lv2Host::write_midi_in(int p_bus, const MidiEvent& p_midi_event) {
-	int event[MidiEvent::DATA_SIZE];
+void Lv2Host::write_midi_in(int p_bus, const MidiEvent &p_midi_event) {
+    int event[MidiEvent::DATA_SIZE];
 
-	for (int i = 0; i < MidiEvent::DATA_SIZE; i++) {
-		event[i] = p_midi_event.data[i];
-	}
+    for (int i = 0; i < MidiEvent::DATA_SIZE; i++) {
+        event[i] = p_midi_event.data[i];
+    }
 
-	midi_input_buffer[p_bus].write_channel(event, MidiEvent::DATA_SIZE);
+    midi_input_buffer[p_bus].write_channel(event, MidiEvent::DATA_SIZE);
 }
 
-bool Lv2Host::read_midi_in(int p_bus, MidiEvent& p_midi_event) {
-	int event[MidiEvent::DATA_SIZE];
-	int read = midi_input_buffer[p_bus].read_channel(event, MidiEvent::DATA_SIZE);
+bool Lv2Host::read_midi_in(int p_bus, MidiEvent &p_midi_event) {
+    int event[MidiEvent::DATA_SIZE];
+    int read = midi_input_buffer[p_bus].read_channel(event, MidiEvent::DATA_SIZE);
 
-	if (read == MidiEvent::DATA_SIZE) {
-		for (int i = 0; i < MidiEvent::DATA_SIZE; i++) {
-			p_midi_event.data[i] = event[i];
-		}
+    if (read == MidiEvent::DATA_SIZE) {
+        for (int i = 0; i < MidiEvent::DATA_SIZE; i++) {
+            p_midi_event.data[i] = event[i];
+        }
         midi_input_buffer[p_bus].update_read_index(MidiEvent::DATA_SIZE);
-	}
+    }
 
-	return read > 0;
+    return read > 0;
 }
 
-void Lv2Host::write_midi_out(int p_bus, const MidiEvent& p_midi_event) {
-	int event[MidiEvent::DATA_SIZE];
+void Lv2Host::write_midi_out(int p_bus, const MidiEvent &p_midi_event) {
+    int event[MidiEvent::DATA_SIZE];
 
-	for (int i = 0; i < MidiEvent::DATA_SIZE; i++) {
-		event[i] = p_midi_event.data[i];
-	}
+    for (int i = 0; i < MidiEvent::DATA_SIZE; i++) {
+        event[i] = p_midi_event.data[i];
+    }
 
-	midi_output_buffer[p_bus].write_channel(event, MidiEvent::DATA_SIZE);
+    midi_output_buffer[p_bus].write_channel(event, MidiEvent::DATA_SIZE);
 }
 
-bool Lv2Host::read_midi_out(int p_bus, MidiEvent& p_midi_event) {
-	int event[MidiEvent::DATA_SIZE];
-	int read = midi_output_buffer[p_bus].read_channel(event, MidiEvent::DATA_SIZE);
+bool Lv2Host::read_midi_out(int p_bus, MidiEvent &p_midi_event) {
+    int event[MidiEvent::DATA_SIZE];
+    int read = midi_output_buffer[p_bus].read_channel(event, MidiEvent::DATA_SIZE);
 
-	if (read == MidiEvent::DATA_SIZE) {
-		for (int i = 0; i < MidiEvent::DATA_SIZE; i++) {
-			p_midi_event.data[i] = event[i];
-		}
-	}
+    if (read == MidiEvent::DATA_SIZE) {
+        for (int i = 0; i < MidiEvent::DATA_SIZE; i++) {
+            p_midi_event.data[i] = event[i];
+        }
+    }
 
     midi_output_buffer[p_bus].update_read_index(MidiEvent::DATA_SIZE);
 
-	return read > 0;
+    return read > 0;
 }
 
 const LilvControl *Lv2Host::get_input_control(int p_index) {
@@ -1220,22 +1216,16 @@ void Lv2Host::s_state_free_path(LV2_State_Free_Path_Handle, char *p) {
     }
 }
 
-void Lv2Host::s_set_port_value(const char* port_symbol,
-                               void*       user_data,
-                               const void* value,
-                               uint32_t    size,
-                               uint32_t    type_urid)
-{
-    auto* self = static_cast<Lv2Host*>(user_data);
-    if (!self) return;
+void Lv2Host::s_set_port_value(const char *port_symbol, void *user_data, const void *value, uint32_t size,
+                               uint32_t type_urid) {
+    auto *self = static_cast<Lv2Host *>(user_data);
+    if (!self) {
+        return;
+    }
     self->set_port_value_impl(port_symbol, value, size, type_urid);
 }
 
-void Lv2Host::set_port_value_impl(const char* port_symbol,
-                                  const void* value,
-                                  uint32_t    size,
-                                  uint32_t    type_urid)
-{
+void Lv2Host::set_port_value_impl(const char *port_symbol, const void *value, uint32_t size, uint32_t type_urid) {
     // Find the target port
     const uint32_t port_index = lookup_port_index_by_symbol(port_symbol);
     if (port_index == UINT32_MAX) {
@@ -1244,7 +1234,7 @@ void Lv2Host::set_port_value_impl(const char* port_symbol,
     }
 
     // Only care about control ports here (preset may also contain file/state stuff handled via features)
-    const LilvPort* cport = lilv_plugin_get_port_by_index(plugin, port_index);
+    const LilvPort *cport = lilv_plugin_get_port_by_index(plugin, port_index);
     if (!lilv_port_is_a(plugin, cport, CONTROL)) {
         // You could extend this to support CV/others if a plugin stores those in state
         return;
@@ -1269,6 +1259,6 @@ void Lv2Host::set_port_value_impl(const char* port_symbol,
     if (port_index < port_buffers.size() && port_buffers[port_index]) {
         // NOTE: If you call lilv_state_restore from a non-audio thread,
         // this is safe. If from the audio thread, consider deferring.
-        *reinterpret_cast<float*>(port_buffers[port_index]) = v;
+        *reinterpret_cast<float *>(port_buffers[port_index]) = v;
     }
 }

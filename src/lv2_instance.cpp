@@ -25,7 +25,8 @@ Lv2Instance::Lv2Instance() {
 
     finished = false;
 
-    world = Lv2Server::get_singleton()->get_lilv_world();
+    // world = Lv2Server::get_singleton()->get_lilv_world();
+    world = lilv_world_new();
     mix_rate = AudioServer::get_singleton()->get_mix_rate();
 
     // TODO: update block size
@@ -47,7 +48,7 @@ Lv2Instance::Lv2Instance() {
     }
 }
 
-void Lv2Instance::configure_lv2() {
+void Lv2Instance::configure() {
     lock();
 
     if (!lv2_host->find_plugin(std::string(uri.ascii()))) {
@@ -147,7 +148,7 @@ void Lv2Instance::start() {
         initialized = true;
         start_thread();
 
-        emit_signal("lv2_ready", lv2_name);
+        emit_signal("lv2_ready", instance_name);
     }
 }
 
@@ -180,7 +181,7 @@ void Lv2Instance::reset() {
         }
         // TODO: handle resetting the host
         // lv2_host->Reset();
-        configure_lv2();
+        configure();
     }
 }
 
@@ -509,17 +510,18 @@ void Lv2Instance::unlock() {
 }
 
 void Lv2Instance::initialize() {
-    configure_lv2();
-
-    start();
+    if (uri.length() > 0) {
+        configure();
+        start();
+    }
 }
 
-void Lv2Instance::set_lv2_name(const String &name) {
-    lv2_name = name;
+void Lv2Instance::set_instance_name(const String &name) {
+    instance_name = name;
 }
 
-const String &Lv2Instance::get_lv2_name() {
-    return lv2_name;
+const String &Lv2Instance::get_instance_name() {
+    return instance_name;
 }
 
 int Lv2Instance::get_input_channel_count() {
@@ -613,8 +615,8 @@ void Lv2Instance::_bind_methods() {
 
     ClassDB::bind_method(D_METHOD("pitch_bend", "chan", "vel"), &Lv2Instance::pitch_bend);
 
-    ClassDB::bind_method(D_METHOD("set_lv2_name", "name"), &Lv2Instance::set_lv2_name);
-    ClassDB::bind_method(D_METHOD("get_lv2_name"), &Lv2Instance::get_lv2_name);
+    ClassDB::bind_method(D_METHOD("set_instance_name", "name"), &Lv2Instance::set_instance_name);
+    ClassDB::bind_method(D_METHOD("get_instance_name"), &Lv2Instance::get_instance_name);
 
     ClassDB::bind_method(D_METHOD("get_input_controls"), &Lv2Instance::get_input_controls);
     ClassDB::bind_method(D_METHOD("get_output_controls"), &Lv2Instance::get_output_controls);
@@ -622,9 +624,10 @@ void Lv2Instance::_bind_methods() {
     ClassDB::bind_method(D_METHOD("get_presets"), &Lv2Instance::get_presets);
     ClassDB::bind_method(D_METHOD("load_preset", "preset"), &Lv2Instance::load_preset);
 
-    ClassDB::add_property("Lv2Instance", PropertyInfo(Variant::STRING, "lv2_name"), "set_lv2_name", "get_lv2_name");
+    ClassDB::add_property("Lv2Instance", PropertyInfo(Variant::STRING, "instance_name"), "set_instance_name",
+                          "get_instance_name");
 
-    ADD_SIGNAL(MethodInfo("lv2_ready", PropertyInfo(Variant::STRING, "lv2_name")));
+    ADD_SIGNAL(MethodInfo("lv2_ready", PropertyInfo(Variant::STRING, "name")));
 }
 
 } // namespace godot

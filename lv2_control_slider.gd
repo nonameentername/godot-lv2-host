@@ -144,7 +144,7 @@ func _apply_text(text: String) -> void:
 	_updating = false
 
 
-func _update_ui_from_parameter(value: float, emit_signal: bool = true) -> void:
+func _update_ui_from_parameter(value: float, _emit_signal: bool = true) -> void:
 	value = _clamp_and_quantize(value)
 	_updating = true
 

@@ -32,15 +32,15 @@ Lv2Server::Lv2Server() {
 Lv2Server::~Lv2Server() {
     finish();
 
-    for (int i = 0; i < lv2_instances.size(); i++) {
-        if (lv2_instances[i]) {
-            lv2_instances[i]->stop();
-            memdelete(lv2_instances[i]);
+    for (int i = 0; i < instances.size(); i++) {
+        if (instances[i]) {
+            instances[i]->stop();
+            memdelete(instances[i]);
         }
     }
 
-    lv2_instances.clear();
-    lv2_map.clear();
+    instances.clear();
+    instance_map.clear();
 
     if (lv2_host != NULL) {
         delete lv2_host;
@@ -100,22 +100,22 @@ void Lv2Server::initialize() {
         std::cerr << "Failed to create/load lv2 world\n";
     }
 
-    add_property("audio/lv2/default_lv2_layout", "res://default_lv2_layout.tres", GDEXTENSION_VARIANT_TYPE_STRING,
+    add_property("audio/lv2-host/default_lv2_layout", "res://default_lv2_layout.tres", GDEXTENSION_VARIANT_TYPE_STRING,
                  PROPERTY_HINT_FILE);
-    add_property("audio/lv2/use_resource_files", "true", GDEXTENSION_VARIANT_TYPE_BOOL, PROPERTY_HINT_NONE);
-    add_property("audio/lv2/hide_lv2_logs", "true", GDEXTENSION_VARIANT_TYPE_BOOL, PROPERTY_HINT_NONE);
+    add_property("audio/lv2-host/use_resource_files", "true", GDEXTENSION_VARIANT_TYPE_BOOL, PROPERTY_HINT_NONE);
+    add_property("audio/lv2-host/hide_lv2_logs", "true", GDEXTENSION_VARIANT_TYPE_BOOL, PROPERTY_HINT_NONE);
 
-    if (!load_default_lv2_layout()) {
-        set_lv2_count(1);
+    if (!load_default_layout()) {
+        set_instance_count(1);
     }
 
     set_edited(false);
 
     if (!initialized) {
-        Node *lv2_server_node = memnew(Lv2ServerNode);
+        Node *server_node = memnew(Lv2ServerNode);
         SceneTree *tree = Object::cast_to<SceneTree>(Engine::get_singleton()->get_main_loop());
-        tree->get_root()->add_child(lv2_server_node);
-        lv2_server_node->set_process(true);
+        tree->get_root()->add_child(server_node);
+        server_node->set_process(true);
     }
 
     start();
@@ -135,8 +135,8 @@ void Lv2Server::thread_func() {
         lock();
 
         bool use_solo = false;
-        for (int i = 0; i < lv2_instances.size(); i++) {
-            if (lv2_instances[i]->solo == true) {
+        for (int i = 0; i < instances.size(); i++) {
+            if (instances[i]->solo == true) {
                 use_solo = true;
             }
         }
@@ -150,30 +150,30 @@ void Lv2Server::thread_func() {
     }
 }
 
-void Lv2Server::set_lv2_count(int p_count) {
+void Lv2Server::set_instance_count(int p_count) {
     ERR_FAIL_COND(p_count < 1);
     ERR_FAIL_INDEX(p_count, 256);
 
     edited = true;
 
-    int cb = lv2_instances.size();
+    int cb = instances.size();
 
-    if (p_count < lv2_instances.size()) {
-        for (int i = p_count; i < lv2_instances.size(); i++) {
-            lv2_map.erase(lv2_instances[i]->lv2_name);
-            memdelete(lv2_instances[i]);
+    if (p_count < instances.size()) {
+        for (int i = p_count; i < instances.size(); i++) {
+            instance_map.erase(instances[i]->instance_name);
+            memdelete(instances[i]);
         }
     }
 
-    lv2_instances.resize(p_count);
+    instances.resize(p_count);
 
-    for (int i = cb; i < lv2_instances.size(); i++) {
-        String attempt = "New Lv2";
+    for (int i = cb; i < instances.size(); i++) {
+        String attempt = "New Instance";
         int attempts = 1;
         while (true) {
             bool name_free = true;
             for (int j = 0; j < i; j++) {
-                if (lv2_instances[j]->lv2_name == attempt) {
+                if (instances[j]->instance_name == attempt) {
                     name_free = false;
                     break;
                 }
@@ -181,7 +181,7 @@ void Lv2Server::set_lv2_count(int p_count) {
 
             if (!name_free) {
                 attempts++;
-                attempt = "New Lv2 " + itos(attempts);
+                attempt = "New Instance " + itos(attempts);
             } else {
                 break;
             }
@@ -191,64 +191,64 @@ void Lv2Server::set_lv2_count(int p_count) {
             attempt = "Main";
         }
 
-        lv2_instances.write[i] = memnew(Lv2Instance);
-        lv2_instances[i]->lv2_name = attempt;
-        lv2_instances[i]->solo = false;
-        lv2_instances[i]->mute = false;
-        lv2_instances[i]->bypass = false;
-        lv2_instances[i]->volume_db = 0;
-        lv2_instances[i]->uri = "";
+        instances.write[i] = memnew(Lv2Instance);
+        instances[i]->instance_name = attempt;
+        instances[i]->solo = false;
+        instances[i]->mute = false;
+        instances[i]->bypass = false;
+        instances[i]->volume_db = 0;
+        instances[i]->uri = "";
 
-        lv2_map[attempt] = lv2_instances[i];
+        instance_map[attempt] = instances[i];
 
-        if (!lv2_instances[i]->is_connected("lv2_ready", Callable(this, "on_lv2_ready"))) {
-            lv2_instances[i]->connect("lv2_ready", Callable(this, "on_lv2_ready"), CONNECT_DEFERRED);
+        if (!instances[i]->is_connected("lv2_ready", Callable(this, "on_ready"))) {
+            instances[i]->connect("lv2_ready", Callable(this, "on_ready"), CONNECT_DEFERRED);
         }
     }
 
-    emit_signal("lv2_layout_changed");
+    emit_signal("layout_changed");
 }
 
-int Lv2Server::get_lv2_count() const {
+int Lv2Server::get_instance_count() const {
     if (!initialized) {
         return 0;
     }
-    return lv2_instances.size();
+    return instances.size();
 }
 
-void Lv2Server::remove_lv2(int p_index) {
-    ERR_FAIL_INDEX(p_index, lv2_instances.size());
+void Lv2Server::remove_instance(int p_index) {
+    ERR_FAIL_INDEX(p_index, instances.size());
     ERR_FAIL_COND(p_index == 0);
 
     edited = true;
 
-    lv2_instances[p_index]->stop();
-    lv2_map.erase(lv2_instances[p_index]->lv2_name);
-    memdelete(lv2_instances[p_index]);
-    lv2_instances.remove_at(p_index);
+    instances[p_index]->stop();
+    instance_map.erase(instances[p_index]->instance_name);
+    memdelete(instances[p_index]);
+    instances.remove_at(p_index);
 
-    emit_signal("lv2_layout_changed");
+    emit_signal("layout_changed");
 }
 
-void Lv2Server::add_lv2(int p_at_pos) {
+void Lv2Server::add_instance(int p_at_pos) {
     edited = true;
 
-    if (p_at_pos >= lv2_instances.size()) {
+    if (p_at_pos >= instances.size()) {
         p_at_pos = -1;
     } else if (p_at_pos == 0) {
-        if (lv2_instances.size() > 1) {
+        if (instances.size() > 1) {
             p_at_pos = 1;
         } else {
             p_at_pos = -1;
         }
     }
 
-    String attempt = "New Lv2";
+    String attempt = "New Instance";
     int attempts = 1;
     while (true) {
         bool name_free = true;
-        for (int j = 0; j < lv2_instances.size(); j++) {
-            if (lv2_instances[j]->lv2_name == attempt) {
+        for (int j = 0; j < instances.size(); j++) {
+            if (instances[j]->instance_name == attempt) {
                 name_free = false;
                 break;
             }
@@ -256,68 +256,68 @@ void Lv2Server::add_lv2(int p_at_pos) {
 
         if (!name_free) {
             attempts++;
-            attempt = "New Lv2 " + itos(attempts);
+            attempt = "New Instance " + itos(attempts);
         } else {
             break;
         }
     }
 
-    Lv2Instance *lv2_instance = memnew(Lv2Instance);
-    lv2_instance->lv2_name = attempt;
-    lv2_instance->solo = false;
-    lv2_instance->mute = false;
-    lv2_instance->bypass = false;
-    lv2_instance->volume_db = 0;
-    lv2_instance->uri = "";
+    Lv2Instance *instance = memnew(Lv2Instance);
+    instance->instance_name = attempt;
+    instance->solo = false;
+    instance->mute = false;
+    instance->bypass = false;
+    instance->volume_db = 0;
+    instance->uri = "";
 
-    if (!lv2_instance->is_connected("lv2_ready", Callable(this, "on_lv2_ready"))) {
-        lv2_instance->connect("lv2_ready", Callable(this, "on_lv2_ready"), CONNECT_DEFERRED);
+    if (!instance->is_connected("lv2_ready", Callable(this, "on_ready"))) {
+        instance->connect("lv2_ready", Callable(this, "on_ready"), CONNECT_DEFERRED);
     }
 
-    lv2_map[attempt] = lv2_instance;
+    instance_map[attempt] = instance;
 
     if (p_at_pos == -1) {
-        lv2_instances.push_back(lv2_instance);
+        instances.push_back(instance);
     } else {
-        lv2_instances.insert(p_at_pos, lv2_instance);
+        instances.insert(p_at_pos, instance);
     }
 
-    emit_signal("lv2_layout_changed");
+    emit_signal("layout_changed");
 }
 
-void Lv2Server::move_lv2(int p_lv2, int p_to_pos) {
-    ERR_FAIL_COND(p_lv2 < 1 || p_lv2 >= lv2_instances.size());
-    ERR_FAIL_COND(p_to_pos != -1 && (p_to_pos < 1 || p_to_pos > lv2_instances.size()));
+void Lv2Server::move_instance(int p_index, int p_to_pos) {
+    ERR_FAIL_COND(p_index < 1 || p_index >= instances.size());
+    ERR_FAIL_COND(p_to_pos != -1 && (p_to_pos < 1 || p_to_pos > instances.size()));
 
     edited = true;
 
-    if (p_lv2 == p_to_pos) {
+    if (p_index == p_to_pos) {
         return;
     }
 
-    Lv2Instance *lv2_instance = lv2_instances[p_lv2];
-    lv2_instances.remove_at(p_lv2);
+    Lv2Instance *instance = instances[p_index];
+    instances.remove_at(p_index);
 
     if (p_to_pos == -1) {
-        lv2_instances.push_back(lv2_instance);
-    } else if (p_to_pos < p_lv2) {
-        lv2_instances.insert(p_to_pos, lv2_instance);
+        instances.push_back(instance);
+    } else if (p_to_pos < p_index) {
+        instances.insert(p_to_pos, instance);
     } else {
-        lv2_instances.insert(p_to_pos - 1, lv2_instance);
+        instances.insert(p_to_pos - 1, instance);
     }
 
-    emit_signal("lv2_layout_changed");
+    emit_signal("layout_changed");
 }
 
-void Lv2Server::set_lv2_name(int p_lv2, const String &p_name) {
-    ERR_FAIL_INDEX(p_lv2, lv2_instances.size());
-    if (p_lv2 == 0 && p_name != "Main") {
+void Lv2Server::set_instance_name(int p_index, const String &p_name) {
+    ERR_FAIL_INDEX(p_index, instances.size());
+    if (p_index == 0 && p_name != "Main") {
         return; // lv2 0 is always main
     }
 
     edited = true;
 
-    if (lv2_instances[p_lv2]->lv2_name == p_name) {
+    if (instances[p_index]->instance_name == p_name) {
         return;
     }
 
@@ -326,8 +326,8 @@ void Lv2Server::set_lv2_name(int p_lv2, const String &p_name) {
 
     while (true) {
         bool name_free = true;
-        for (int i = 0; i < lv2_instances.size(); i++) {
-            if (lv2_instances[i]->lv2_name == attempt) {
+        for (int i = 0; i < instances.size(); i++) {
+            if (instances[i]->instance_name == attempt) {
                 name_free = false;
                 break;
             }
@@ -340,136 +340,136 @@ void Lv2Server::set_lv2_name(int p_lv2, const String &p_name) {
         attempts++;
         attempt = p_name + String(" ") + itos(attempts);
     }
-    lv2_map.erase(lv2_instances[p_lv2]->lv2_name);
-    lv2_instances[p_lv2]->lv2_name = attempt;
-    lv2_map[attempt] = lv2_instances[p_lv2];
+    instance_map.erase(instances[p_index]->instance_name);
+    instances[p_index]->instance_name = attempt;
+    instance_map[attempt] = instances[p_index];
 
-    emit_signal("lv2_layout_changed");
+    emit_signal("layout_changed");
 }
 
-String Lv2Server::get_lv2_name(int p_lv2) const {
-    ERR_FAIL_INDEX_V(p_lv2, lv2_instances.size(), String());
-    return lv2_instances[p_lv2]->lv2_name;
+String Lv2Server::get_instance_name(int p_index) const {
+    ERR_FAIL_INDEX_V(p_index, instances.size(), String());
+    return instances[p_index]->instance_name;
 }
 
-int Lv2Server::get_lv2_index(const StringName &p_lv2_name) const {
-    for (int i = 0; i < lv2_instances.size(); ++i) {
-        if (lv2_instances[i]->lv2_name == p_lv2_name) {
+int Lv2Server::get_instance_index(const StringName &p_index) const {
+    for (int i = 0; i < instances.size(); ++i) {
+        if (instances[i]->instance_name == p_index) {
             return i;
         }
     }
     return -1;
 }
 
-String Lv2Server::get_lv2_name_options() const {
+String Lv2Server::get_name_options() const {
     String options;
-    for (int i = 0; i < get_lv2_count(); i++) {
+    for (int i = 0; i < get_instance_count(); i++) {
         if (i > 0) {
             options += ",";
         }
-        String name = get_lv2_name(i);
+        String name = get_instance_name(i);
         options += name;
     }
     return options;
 }
 
-int Lv2Server::get_lv2_channel_count(int p_lv2) const {
-    ERR_FAIL_INDEX_V(p_lv2, lv2_instances.size(), 0);
-    return lv2_instances[p_lv2]->get_output_channel_count();
+int Lv2Server::get_channel_count(int p_index) const {
+    ERR_FAIL_INDEX_V(p_index, instances.size(), 0);
+    return instances[p_index]->get_output_channel_count();
 }
 
-void Lv2Server::set_lv2_volume_db(int p_lv2, float p_volume_db) {
-    ERR_FAIL_INDEX(p_lv2, lv2_instances.size());
+void Lv2Server::set_volume_db(int p_index, float p_volume_db) {
+    ERR_FAIL_INDEX(p_index, instances.size());
 
     edited = true;
 
-    lv2_instances[p_lv2]->volume_db = p_volume_db;
+    instances[p_index]->volume_db = p_volume_db;
 }
 
-float Lv2Server::get_lv2_volume_db(int p_lv2) const {
-    ERR_FAIL_INDEX_V(p_lv2, lv2_instances.size(), 0);
-    return lv2_instances[p_lv2]->volume_db;
+float Lv2Server::get_volume_db(int p_index) const {
+    ERR_FAIL_INDEX_V(p_index, instances.size(), 0);
+    return instances[p_index]->volume_db;
 }
 
-void Lv2Server::set_lv2_uri(int p_lv2, String p_uri) {
-    ERR_FAIL_INDEX(p_lv2, lv2_instances.size());
+void Lv2Server::set_uri(int p_index, String p_uri) {
+    ERR_FAIL_INDEX(p_index, instances.size());
 
     edited = true;
 
-    lv2_instances[p_lv2]->uri = p_uri;
+    instances[p_index]->uri = p_uri;
 }
 
-String Lv2Server::get_lv2_uri(int p_lv2) const {
-    ERR_FAIL_INDEX_V(p_lv2, lv2_instances.size(), "");
-    return lv2_instances[p_lv2]->uri;
+String Lv2Server::get_uri(int p_index) const {
+    ERR_FAIL_INDEX_V(p_index, instances.size(), "");
+    return instances[p_index]->uri;
 }
 
-void Lv2Server::set_lv2_solo(int p_lv2, bool p_enable) {
-    ERR_FAIL_INDEX(p_lv2, lv2_instances.size());
+void Lv2Server::set_solo(int p_index, bool p_enable) {
+    ERR_FAIL_INDEX(p_index, instances.size());
 
     edited = true;
 
-    lv2_instances[p_lv2]->solo = p_enable;
+    instances[p_index]->solo = p_enable;
 }
 
-bool Lv2Server::is_lv2_solo(int p_lv2) const {
-    ERR_FAIL_INDEX_V(p_lv2, lv2_instances.size(), false);
+bool Lv2Server::is_solo(int p_index) const {
+    ERR_FAIL_INDEX_V(p_index, instances.size(), false);
 
-    return lv2_instances[p_lv2]->solo;
+    return instances[p_index]->solo;
 }
 
-void Lv2Server::set_lv2_mute(int p_lv2, bool p_enable) {
-    ERR_FAIL_INDEX(p_lv2, lv2_instances.size());
+void Lv2Server::set_mute(int p_index, bool p_enable) {
+    ERR_FAIL_INDEX(p_index, instances.size());
 
     edited = true;
 
-    lv2_instances[p_lv2]->mute = p_enable;
+    instances[p_index]->mute = p_enable;
 }
 
-bool Lv2Server::is_lv2_mute(int p_lv2) const {
-    ERR_FAIL_INDEX_V(p_lv2, lv2_instances.size(), false);
+bool Lv2Server::is_mute(int p_index) const {
+    ERR_FAIL_INDEX_V(p_index, instances.size(), false);
 
-    return lv2_instances[p_lv2]->mute;
+    return instances[p_index]->mute;
 }
 
-void Lv2Server::set_lv2_bypass(int p_lv2, bool p_enable) {
-    ERR_FAIL_INDEX(p_lv2, lv2_instances.size());
+void Lv2Server::set_bypass(int p_index, bool p_enable) {
+    ERR_FAIL_INDEX(p_index, instances.size());
 
     edited = true;
 
-    lv2_instances[p_lv2]->bypass = p_enable;
+    instances[p_index]->bypass = p_enable;
 }
 
-bool Lv2Server::is_lv2_bypassing(int p_lv2) const {
-    ERR_FAIL_INDEX_V(p_lv2, lv2_instances.size(), false);
+bool Lv2Server::is_bypassing(int p_index) const {
+    ERR_FAIL_INDEX_V(p_index, instances.size(), false);
 
-    return lv2_instances[p_lv2]->bypass;
+    return instances[p_index]->bypass;
 }
 
-float Lv2Server::get_lv2_channel_peak_volume_db(int p_lv2, int p_channel) const {
-    ERR_FAIL_INDEX_V(p_lv2, lv2_instances.size(), 0);
-    ERR_FAIL_INDEX_V(p_channel, lv2_instances[p_lv2]->output_channels.size(), 0);
+float Lv2Server::get_channel_peak_volume_db(int p_index, int p_channel) const {
+    ERR_FAIL_INDEX_V(p_index, instances.size(), 0);
+    ERR_FAIL_INDEX_V(p_channel, instances[p_index]->output_channels.size(), 0);
 
-    return lv2_instances[p_lv2]->output_channels[p_channel].peak_volume;
+    return instances[p_index]->output_channels[p_channel].peak_volume;
 }
 
-bool Lv2Server::is_lv2_channel_active(int p_lv2, int p_channel) const {
-    ERR_FAIL_INDEX_V(p_lv2, lv2_instances.size(), false);
-    if (p_channel >= lv2_instances[p_lv2]->output_channels.size()) {
+bool Lv2Server::is_channel_active(int p_index, int p_channel) const {
+    ERR_FAIL_INDEX_V(p_index, instances.size(), false);
+    if (p_channel >= instances[p_index]->output_channels.size()) {
         return false;
     }
 
-    ERR_FAIL_INDEX_V(p_channel, lv2_instances[p_lv2]->output_channels.size(), false);
+    ERR_FAIL_INDEX_V(p_channel, instances[p_index]->output_channels.size(), false);
 
-    return lv2_instances[p_lv2]->output_channels[p_channel].active;
+    return instances[p_index]->output_channels[p_channel].active;
 }
 
-bool Lv2Server::load_default_lv2_layout() {
+bool Lv2Server::load_default_layout() {
     if (layout_loaded) {
         return true;
     }
 
-    String layout_path = ProjectSettings::get_singleton()->get_setting("audio/lv2/default_lv2_layout");
+    String layout_path = ProjectSettings::get_singleton()->get_setting("audio/lv2-host/default_lv2_layout");
 
     if (layout_path.is_empty() || layout_path.get_file() == "<null>") {
         layout_path = "res://default_lv2_layout.tres";
@@ -478,8 +478,8 @@ bool Lv2Server::load_default_lv2_layout() {
     if (ResourceLoader::get_singleton()->exists(layout_path)) {
         Ref<Lv2Layout> default_layout = ResourceLoader::get_singleton()->load(layout_path);
         if (default_layout.is_valid()) {
-            set_lv2_layout(default_layout);
-            emit_signal("lv2_layout_changed");
+            set_layout(default_layout);
+            emit_signal("layout_changed");
             return true;
         }
     }
@@ -487,65 +487,65 @@ bool Lv2Server::load_default_lv2_layout() {
     return false;
 }
 
-void Lv2Server::set_lv2_layout(const Ref<Lv2Layout> &p_lv2_layout) {
-    ERR_FAIL_COND(p_lv2_layout.is_null() || p_lv2_layout->lv2s.size() == 0);
+void Lv2Server::set_layout(const Ref<Lv2Layout> &p_layout) {
+    ERR_FAIL_COND(p_layout.is_null() || p_layout->instances.size() == 0);
 
-    int prev_size = lv2_instances.size();
-    for (int i = prev_size; i < lv2_instances.size(); i++) {
-        lv2_instances[i]->stop();
-        memdelete(lv2_instances[i]);
+    int prev_size = instances.size();
+    for (int i = prev_size; i < instances.size(); i++) {
+        instances[i]->stop();
+        memdelete(instances[i]);
     }
-    lv2_instances.resize(p_lv2_layout->lv2s.size());
-    lv2_map.clear();
-    for (int i = 0; i < p_lv2_layout->lv2s.size(); i++) {
-        Lv2Instance *lv2;
+    instances.resize(p_layout->instances.size());
+    instance_map.clear();
+    for (int i = 0; i < p_layout->instances.size(); i++) {
+        Lv2Instance *instance;
         if (i >= prev_size) {
-            lv2 = memnew(Lv2Instance);
+            instance = memnew(Lv2Instance);
         } else {
-            lv2 = lv2_instances[i];
-            lv2->reset();
+            instance = instances[i];
+            instance->reset();
         }
 
         if (i == 0) {
-            lv2->lv2_name = "Main";
+            instance->instance_name = "Main";
         } else {
-            lv2->lv2_name = p_lv2_layout->lv2s[i].name;
+            instance->instance_name = p_layout->instances[i].name;
         }
 
-        lv2->solo = p_lv2_layout->lv2s[i].solo;
-        lv2->mute = p_lv2_layout->lv2s[i].mute;
-        lv2->bypass = p_lv2_layout->lv2s[i].bypass;
-        lv2->volume_db = p_lv2_layout->lv2s[i].volume_db;
-        lv2->uri = p_lv2_layout->lv2s[i].uri;
-        lv2_map[lv2->lv2_name] = lv2;
-        lv2_instances.write[i] = lv2;
+        instance->solo = p_layout->instances[i].solo;
+        instance->mute = p_layout->instances[i].mute;
+        instance->bypass = p_layout->instances[i].bypass;
+        instance->volume_db = p_layout->instances[i].volume_db;
+        instance->uri = p_layout->instances[i].uri;
+        instance_map[instance->instance_name] = instance;
+        instances.write[i] = instance;
 
-        lv2->call_deferred("initialize");
-        if (!lv2->is_connected("lv2_ready", Callable(this, "on_lv2_ready"))) {
-            lv2->connect("lv2_ready", Callable(this, "on_lv2_ready"), CONNECT_DEFERRED);
+        instance->call_deferred("initialize");
+        if (!instance->is_connected("lv2_ready", Callable(this, "on_ready"))) {
+            instance->connect("lv2_ready", Callable(this, "on_ready"), CONNECT_DEFERRED);
         }
     }
     edited = false;
     layout_loaded = true;
 }
 
-void Lv2Server::on_lv2_ready(String lv2_name) {
-    emit_signal("lv2_ready", lv2_name);
+void Lv2Server::on_ready(String instance_name) {
+    emit_signal("lv2_ready", instance_name);
 }
 
-Ref<Lv2Layout> Lv2Server::generate_lv2_layout() const {
+Ref<Lv2Layout> Lv2Server::generate_layout() const {
     Ref<Lv2Layout> state;
     state.instantiate();
 
-    state->lv2s.resize(lv2_instances.size());
+    state->instances.resize(instances.size());
 
-    for (int i = 0; i < lv2_instances.size(); i++) {
-        state->lv2s.write[i].name = lv2_instances[i]->lv2_name;
-        state->lv2s.write[i].mute = lv2_instances[i]->mute;
-        state->lv2s.write[i].solo = lv2_instances[i]->solo;
-        state->lv2s.write[i].bypass = lv2_instances[i]->bypass;
-        state->lv2s.write[i].volume_db = lv2_instances[i]->volume_db;
-        state->lv2s.write[i].uri = lv2_instances[i]->uri;
+    for (int i = 0; i < instances.size(); i++) {
+        state->instances.write[i].name = instances[i]->instance_name;
+        state->instances.write[i].mute = instances[i]->mute;
+        state->instances.write[i].solo = instances[i]->solo;
+        state->instances.write[i].bypass = instances[i]->bypass;
+        state->instances.write[i].volume_db = instances[i]->volume_db;
+        state->instances.write[i].uri = instances[i]->uri;
     }
 
     return state;
@@ -604,38 +604,38 @@ String Lv2Server::get_plugin_name(String p_uri) {
     return "";
 }
 
-Lv2Instance *Lv2Server::get_lv2(const String &p_name) {
-    if (lv2_map.has(p_name)) {
-        return lv2_map.get(p_name);
+Lv2Instance *Lv2Server::get_instance(const String &p_name) {
+    if (instance_map.has(p_name)) {
+        return instance_map.get(p_name);
     }
 
     return NULL;
 }
 
-Lv2Instance *Lv2Server::get_lv2_by_index(int p_index) {
-    return lv2_instances.get(p_index);
+Lv2Instance *Lv2Server::get_instance_by_index(int p_index) {
+    return instances.get(p_index);
 }
 
-Lv2Instance *Lv2Server::get_lv2_(const Variant &p_variant) {
+Lv2Instance *Lv2Server::get_instance_(const Variant &p_variant) {
     if (p_variant.get_type() == Variant::STRING) {
         String str = p_variant;
-        return lv2_map.get(str);
+        return instance_map.get(str);
     }
 
     if (p_variant.get_type() == Variant::INT) {
         int index = p_variant.operator int();
-        return lv2_instances.get(index);
+        return instances.get(index);
     }
 
     return NULL;
 }
 
 String Lv2Server::get_version() {
-    return GODOT_LV2_VERSION;
+    return GODOT_LV2_HOST_VERSION;
 }
 
 String Lv2Server::get_build() {
-    return GODOT_LV2_BUILD;
+    return GODOT_LV2_HOST_BUILD;
 }
 
 void Lv2Server::_bind_methods() {
@@ -647,59 +647,59 @@ void Lv2Server::_bind_methods() {
     ClassDB::bind_method(D_METHOD("set_edited", "edited"), &Lv2Server::set_edited);
     ClassDB::bind_method(D_METHOD("get_edited"), &Lv2Server::get_edited);
 
-    ClassDB::bind_method(D_METHOD("set_lv2_count", "amount"), &Lv2Server::set_lv2_count);
-    ClassDB::bind_method(D_METHOD("get_lv2_count"), &Lv2Server::get_lv2_count);
+    ClassDB::bind_method(D_METHOD("set_instance_count", "amount"), &Lv2Server::set_instance_count);
+    ClassDB::bind_method(D_METHOD("get_instance_count"), &Lv2Server::get_instance_count);
 
-    ClassDB::bind_method(D_METHOD("remove_lv2", "index"), &Lv2Server::remove_lv2);
-    ClassDB::bind_method(D_METHOD("add_lv2", "at_position"), &Lv2Server::add_lv2, DEFVAL(-1));
-    ClassDB::bind_method(D_METHOD("move_lv2", "index", "to_index"), &Lv2Server::move_lv2);
+    ClassDB::bind_method(D_METHOD("remove_instance", "index"), &Lv2Server::remove_instance);
+    ClassDB::bind_method(D_METHOD("add_instance", "at_position"), &Lv2Server::add_instance, DEFVAL(-1));
+    ClassDB::bind_method(D_METHOD("move_instance", "index", "to_index"), &Lv2Server::move_instance);
 
-    ClassDB::bind_method(D_METHOD("set_lv2_name", "lv2_idx", "name"), &Lv2Server::set_lv2_name);
-    ClassDB::bind_method(D_METHOD("get_lv2_name", "lv2_idx"), &Lv2Server::get_lv2_name);
-    ClassDB::bind_method(D_METHOD("get_lv2_index", "lv2_name"), &Lv2Server::get_lv2_index);
+    ClassDB::bind_method(D_METHOD("set_instance_name", "index", "name"), &Lv2Server::set_instance_name);
+    ClassDB::bind_method(D_METHOD("get_instance_name", "index"), &Lv2Server::get_instance_name);
+    ClassDB::bind_method(D_METHOD("get_instance_index", "name"), &Lv2Server::get_instance_index);
 
-    ClassDB::bind_method(D_METHOD("get_lv2_name_options"), &Lv2Server::get_lv2_name_options);
+    ClassDB::bind_method(D_METHOD("get_name_options"), &Lv2Server::get_name_options);
 
-    ClassDB::bind_method(D_METHOD("get_lv2_channel_count", "lv2_idx"), &Lv2Server::get_lv2_channel_count);
+    ClassDB::bind_method(D_METHOD("get_channel_count", "index"), &Lv2Server::get_channel_count);
 
-    ClassDB::bind_method(D_METHOD("set_lv2_volume_db", "lv2_idx", "volume_db"), &Lv2Server::set_lv2_volume_db);
-    ClassDB::bind_method(D_METHOD("get_lv2_volume_db", "lv2_idx"), &Lv2Server::get_lv2_volume_db);
+    ClassDB::bind_method(D_METHOD("set_volume_db", "index", "volume_db"), &Lv2Server::set_volume_db);
+    ClassDB::bind_method(D_METHOD("get_volume_db", "index"), &Lv2Server::get_volume_db);
 
-    ClassDB::bind_method(D_METHOD("set_lv2_uri", "lv2_idx", "uri"), &Lv2Server::set_lv2_uri);
-    ClassDB::bind_method(D_METHOD("get_lv2_uri", "lv2_idx"), &Lv2Server::get_lv2_uri);
+    ClassDB::bind_method(D_METHOD("set_uri", "index", "uri"), &Lv2Server::set_uri);
+    ClassDB::bind_method(D_METHOD("get_uri", "index"), &Lv2Server::get_uri);
 
-    ClassDB::bind_method(D_METHOD("set_lv2_solo", "lv2_idx", "enable"), &Lv2Server::set_lv2_solo);
-    ClassDB::bind_method(D_METHOD("is_lv2_solo", "lv2_idx"), &Lv2Server::is_lv2_solo);
+    ClassDB::bind_method(D_METHOD("set_solo", "index", "enable"), &Lv2Server::set_solo);
+    ClassDB::bind_method(D_METHOD("is_solo", "index"), &Lv2Server::is_solo);
 
-    ClassDB::bind_method(D_METHOD("set_lv2_mute", "lv2_idx", "enable"), &Lv2Server::set_lv2_mute);
-    ClassDB::bind_method(D_METHOD("is_lv2_mute", "lv2_idx"), &Lv2Server::is_lv2_mute);
+    ClassDB::bind_method(D_METHOD("set_mute", "index", "enable"), &Lv2Server::set_mute);
+    ClassDB::bind_method(D_METHOD("is_mute", "index"), &Lv2Server::is_mute);
 
-    ClassDB::bind_method(D_METHOD("set_lv2_bypass", "lv2_idx", "enable"), &Lv2Server::set_lv2_bypass);
-    ClassDB::bind_method(D_METHOD("is_lv2_bypassing", "lv2_idx"), &Lv2Server::is_lv2_bypassing);
+    ClassDB::bind_method(D_METHOD("set_bypass", "index", "enable"), &Lv2Server::set_bypass);
+    ClassDB::bind_method(D_METHOD("is_bypassing", "index"), &Lv2Server::is_bypassing);
 
-    ClassDB::bind_method(D_METHOD("get_lv2_channel_peak_volume_db", "lv2_idx", "channel"),
-                         &Lv2Server::get_lv2_channel_peak_volume_db);
+    ClassDB::bind_method(D_METHOD("get_channel_peak_volume_db", "index", "channel"),
+                         &Lv2Server::get_channel_peak_volume_db);
 
-    ClassDB::bind_method(D_METHOD("is_lv2_channel_active", "lv2_idx", "channel"), &Lv2Server::is_lv2_channel_active);
+    ClassDB::bind_method(D_METHOD("is_channel_active", "index", "channel"), &Lv2Server::is_channel_active);
 
     ClassDB::bind_method(D_METHOD("lock"), &Lv2Server::lock);
     ClassDB::bind_method(D_METHOD("unlock"), &Lv2Server::unlock);
 
-    ClassDB::bind_method(D_METHOD("set_lv2_layout", "lv2_layout"), &Lv2Server::set_lv2_layout);
-    ClassDB::bind_method(D_METHOD("generate_lv2_layout"), &Lv2Server::generate_lv2_layout);
+    ClassDB::bind_method(D_METHOD("set_layout", "layout"), &Lv2Server::set_layout);
+    ClassDB::bind_method(D_METHOD("generate_layout"), &Lv2Server::generate_layout);
 
-    ClassDB::bind_method(D_METHOD("get_lv2", "lv2_name"), &Lv2Server::get_lv2);
+    ClassDB::bind_method(D_METHOD("get_instance", "name"), &Lv2Server::get_instance);
 
-    ClassDB::bind_method(D_METHOD("on_lv2_ready", "lv2_name"), &Lv2Server::on_lv2_ready);
+    ClassDB::bind_method(D_METHOD("on_ready", "name"), &Lv2Server::on_ready);
 
     ClassDB::bind_method(D_METHOD("get_plugins"), &Lv2Server::get_plugins);
 
     ClassDB::bind_method(D_METHOD("get_plugin_name", "uri"), &Lv2Server::get_plugin_name);
 
-    ADD_PROPERTY(PropertyInfo(Variant::INT, "lv2_count"), "set_lv2_count", "get_lv2_count");
+    ADD_PROPERTY(PropertyInfo(Variant::INT, "instance_count"), "set_instance_count", "get_instance_count");
 
-    ADD_SIGNAL(MethodInfo("lv2_layout_changed"));
-    ADD_SIGNAL(MethodInfo("lv2_ready", PropertyInfo(Variant::STRING, "lv2_name")));
+    ADD_SIGNAL(MethodInfo("layout_changed"));
+    ADD_SIGNAL(MethodInfo("lv2_ready", PropertyInfo(Variant::STRING, "name")));
 }
 
 } // namespace godot

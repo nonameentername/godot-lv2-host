@@ -17,14 +17,14 @@ var add_intrument: TreeItem
 var slider: VSlider
 var preview_timer: Timer
 var initialized = false
-var updating_lv2: bool
+var updating_instance: bool
 var lv2_name: LineEdit
 var is_main: bool
 var enabled_vu: Texture2D
 var disabled_vu: Texture2D
 var active_bus_texture: Texture2D
 var hovering_drop: bool
-var editor_lv2_instances: EditorLv2Instances
+var editor_instances: EditorLv2Instances
 var undo_redo: EditorUndoRedoManager
 var channel_container: BoxContainer
 var lv2_file_label: LineEdit
@@ -50,7 +50,7 @@ func _init():
 	add_user_signal("drop_end_request")
 	add_user_signal("dropped")
 
-	updating_lv2 = false
+	updating_instance = false
 	hovering_drop = false
 
 
@@ -119,7 +119,7 @@ func _ready():
 	shortcut.resource_name = "Reset volume"
 	popup.add_shortcut(shortcut)
 
-	popup.connect("index_pressed", _lv2_popup_pressed)
+	popup.connect("index_pressed", _popup_pressed)
 
 	tree.hide_root = true
 	tree.hide_folding = true
@@ -127,7 +127,7 @@ func _ready():
 	tree.focus_mode = FOCUS_CLICK
 	tree.allow_reselect = true
 
-	update_lv2()
+	update_instance()
 	_update_theme()
 
 
@@ -159,9 +159,9 @@ func _update_visiable_channels():
 			channel_container.remove_child(channel)
 
 	channels.clear()
-	channels.resize(Lv2Server.get_lv2_channel_count(get_index()))
+	channels.resize(Lv2Server.get_channel_count(get_index()))
 
-	for i in range(0, Lv2Server.get_lv2_channel_count(get_index())):
+	for i in range(0, Lv2Server.get_channel_count(get_index())):
 		var channel: Channel = _create_channel()
 		var channel_progress_bar: TextureProgressBar = _create_channel_progress_bar()
 		channel.vu = channel_progress_bar
@@ -174,14 +174,14 @@ func _update_visiable_channels():
 
 
 func _process(_delta):
-	if channels.size() != Lv2Server.get_lv2_channel_count(get_index()):
+	if channels.size() != Lv2Server.get_channel_count(get_index()):
 		_update_visiable_channels()
 
 	for i in range(0, channels.size()):
 		var real_peak = -100
 
-		if Lv2Server.is_lv2_channel_active(get_index(), i):
-			real_peak = max(real_peak, Lv2Server.get_lv2_channel_peak_volume_db(get_index(), i))
+		if Lv2Server.is_channel_active(get_index(), i):
+			real_peak = max(real_peak, Lv2Server.get_channel_peak_volume_db(get_index(), i))
 
 		_update_channel_vu(channels[i], real_peak)
 
@@ -268,32 +268,32 @@ func _show_value(value):
 
 
 func _tab_changed(tab: int):
-	if updating_lv2:
+	if updating_instance:
 		return
 
 	_update_slider()
 
 
 func _value_changed(normalized):
-	if updating_lv2:
+	if updating_instance:
 		return
 
-	updating_lv2 = true
+	updating_instance = true
 
 	var db: float = _normalized_volume_to_scaled_db(normalized)
 	if Input.is_key_pressed(KEY_CTRL):
 		slider.value = _scaled_db_to_normalized_volume(round(db))
 
 	undo_redo.create_action("Change Lv2 Volume", UndoRedo.MERGE_ENDS)
-	undo_redo.add_do_method(Lv2Server, "set_lv2_volume_db", get_index(), db)
+	undo_redo.add_do_method(Lv2Server, "set_volume_db", get_index(), db)
 	undo_redo.add_undo_method(
-		Lv2Server, "set_lv2_volume_db", get_index(), Lv2Server.get_lv2_volume_db(get_index())
+		Lv2Server, "set_volume_db", get_index(), Lv2Server.get_volume_db(get_index())
 	)
-	undo_redo.add_do_method(editor_lv2_instances, "_update_lv2_instance", get_index())
-	undo_redo.add_undo_method(editor_lv2_instances, "_update_lv2_instance", get_index())
+	undo_redo.add_do_method(editor_instances, "_update_instance", get_index())
+	undo_redo.add_undo_method(editor_instances, "_update_instance", get_index())
 	undo_redo.commit_action()
 
-	updating_lv2 = false
+	updating_instance = false
 
 
 func _normalized_volume_to_scaled_db(normalized):
@@ -388,14 +388,6 @@ func _tree_custom_item_clicked(mouse_button_index: int):
 	print("adding an instrument", mouse_button_index, MOUSE_BUTTON_RIGHT)
 
 
-func _lv2_instrument_changed():
-	pass
-
-
-func _lv2_delete_instrument(_option: int):
-	pass
-
-
 func _get_drag_data(at_position):
 	if get_index() == 0:
 		return
@@ -408,9 +400,9 @@ func _get_drag_data(at_position):
 	panel.set_size(get_size())
 	panel.set_position(-at_position)
 	set_drag_preview(control)
-	var dictionary: Dictionary = {"type": "move_lv2", "index": get_index()}
+	var dictionary: Dictionary = {"type": "move_instance", "index": get_index()}
 
-	if get_index() < Lv2Server.get_lv2_count() - 1:
+	if get_index() < Lv2Server.get_instance_count() - 1:
 		emit_signal("drop_end_request")
 
 	return dictionary
@@ -420,7 +412,7 @@ func _can_drop_data(_at_position, data):
 	if get_index() == 0:
 		return false
 
-	if data.has("type") and data["type"] == "move_lv2" and int(data["index"]) != get_index():
+	if data.has("type") and data["type"] == "move_instance" and int(data["index"]) != get_index():
 		hovering_drop = true
 		return true
 
@@ -431,7 +423,7 @@ func _drop_data(_at_position, data):
 	emit_signal("dropped", data["index"], get_index())
 
 
-func _lv2_popup_pressed(option: int):
+func _popup_pressed(option: int):
 	#if not has_focus():
 	#	return
 	match option:
@@ -443,26 +435,26 @@ func _lv2_popup_pressed(option: int):
 			emit_signal("duplicate_request", get_index())
 
 
-func update_lv2():
-	if updating_lv2:
+func update_instance():
+	if updating_instance:
 		return
 
-	updating_lv2 = true
+	updating_instance = true
 
 	var index: int = get_index()
 
-	var db_value: float = Lv2Server.get_lv2_volume_db(index)
+	var db_value: float = Lv2Server.get_volume_db(index)
 	slider.value = _scaled_db_to_normalized_volume(db_value)
-	lv2_name.text = Lv2Server.get_lv2_name(index)
+	lv2_name.text = Lv2Server.get_instance_name(index)
 
 	if is_main:
 		lv2_name.editable = false
 
-	solo.button_pressed = Lv2Server.is_lv2_solo(index)
-	mute.button_pressed = Lv2Server.is_lv2_mute(index)
-	bypass.button_pressed = Lv2Server.is_lv2_bypassing(index)
+	solo.button_pressed = Lv2Server.is_solo(index)
+	mute.button_pressed = Lv2Server.is_mute(index)
+	bypass.button_pressed = Lv2Server.is_bypassing(index)
 
-	var lv2_uri = Lv2Server.get_lv2_uri(index)
+	var lv2_uri = Lv2Server.get_uri(index)
 
 	if lv2_uri:
 		lv2_file_label.text = lv2_uri
@@ -474,7 +466,7 @@ func update_lv2():
 
 	_update_slider()
 
-	updating_lv2 = false
+	updating_instance = false
 
 
 func _update_slider():
@@ -482,59 +474,55 @@ func _update_slider():
 
 
 func _solo_toggled():
-	updating_lv2 = true
+	updating_instance = true
 
 	undo_redo.create_action("Toggle Lv2 Solo")
-	undo_redo.add_do_method(Lv2Server, "set_lv2_solo", get_index(), solo.is_pressed())
-	undo_redo.add_undo_method(
-		Lv2Server, "set_lv2_solo", get_index(), Lv2Server.is_lv2_solo(get_index())
-	)
-	undo_redo.add_do_method(editor_lv2_instances, "_update_lv2_instance", get_index())
-	undo_redo.add_undo_method(editor_lv2_instances, "_update_lv2_instance", get_index())
+	undo_redo.add_do_method(Lv2Server, "set_solo", get_index(), solo.is_pressed())
+	undo_redo.add_undo_method(Lv2Server, "set_solo", get_index(), Lv2Server.is_solo(get_index()))
+	undo_redo.add_do_method(editor_instances, "_update_instance", get_index())
+	undo_redo.add_undo_method(editor_instances, "_update_instance", get_index())
 	undo_redo.commit_action()
 
-	updating_lv2 = false
+	updating_instance = false
 
 
 func _mute_toggled():
-	updating_lv2 = true
+	updating_instance = true
 
 	undo_redo.create_action("Toggle Lv2 mute")
-	undo_redo.add_do_method(Lv2Server, "set_lv2_mute", get_index(), mute.is_pressed())
-	undo_redo.add_undo_method(
-		Lv2Server, "set_lv2_mute", get_index(), Lv2Server.is_lv2_mute(get_index())
-	)
-	undo_redo.add_do_method(editor_lv2_instances, "_update_lv2_instance", get_index())
-	undo_redo.add_undo_method(editor_lv2_instances, "_update_lv2_instance", get_index())
+	undo_redo.add_do_method(Lv2Server, "set_mute", get_index(), mute.is_pressed())
+	undo_redo.add_undo_method(Lv2Server, "set_mute", get_index(), Lv2Server.is_mute(get_index()))
+	undo_redo.add_do_method(editor_instances, "_update_instance", get_index())
+	undo_redo.add_undo_method(editor_instances, "_update_instance", get_index())
 	undo_redo.commit_action()
 
-	updating_lv2 = false
+	updating_instance = false
 
 
 func _bypass_toggled():
-	updating_lv2 = true
+	updating_instance = true
 
 	undo_redo.create_action("Toggle Lv2 bypass")
-	undo_redo.add_do_method(Lv2Server, "set_lv2_bypass", get_index(), bypass.is_pressed())
+	undo_redo.add_do_method(Lv2Server, "set_bypass", get_index(), bypass.is_pressed())
 	undo_redo.add_undo_method(
-		Lv2Server, "set_lv2_bypass", get_index(), Lv2Server.is_lv2_bypassing(get_index())
+		Lv2Server, "set_bypass", get_index(), Lv2Server.is_bypassing(get_index())
 	)
-	undo_redo.add_do_method(editor_lv2_instances, "_update_lv2_instance", get_index())
-	undo_redo.add_undo_method(editor_lv2_instances, "_update_lv2_instance", get_index())
+	undo_redo.add_do_method(editor_instances, "_update_instance", get_index())
+	undo_redo.add_undo_method(editor_instances, "_update_instance", get_index())
 	undo_redo.commit_action()
 
-	updating_lv2 = false
+	updating_instance = false
 
 
 func _name_changed(new_name: String):
-	if updating_lv2:
+	if updating_instance:
 		return
 
-	updating_lv2 = true
+	updating_instance = true
 	#lv2_name.release_focus()
 
-	if new_name == Lv2Server.get_lv2_name(get_index()):
-		updating_lv2 = false
+	if new_name == Lv2Server.get_instance_name(get_index()):
+		updating_instance = false
 		return new_name
 
 	var attempt: String = new_name
@@ -542,8 +530,8 @@ func _name_changed(new_name: String):
 
 	while true:
 		var name_free: bool = true
-		for i in range(0, Lv2Server.get_lv2_count()):
-			if Lv2Server.get_lv2_name(i) == attempt:
+		for i in range(0, Lv2Server.get_instance_count()):
+			if Lv2Server.get_instance_name(i) == attempt:
 				name_free = false
 				break
 
@@ -553,23 +541,23 @@ func _name_changed(new_name: String):
 		attempts += 1
 		attempt = new_name + " " + str(attempts)
 
-	var current: String = Lv2Server.get_lv2_name(get_index())
+	var current: String = Lv2Server.get_instance_name(get_index())
 
 	undo_redo.create_action("Rename Lv2 Plugin")
-	undo_redo.add_do_method(editor_lv2_instances, "_set_renaming_lv2", true)
-	undo_redo.add_undo_method(editor_lv2_instances, "_set_renaming_lv2", true)
+	undo_redo.add_do_method(editor_instances, "_set_renaming", true)
+	undo_redo.add_undo_method(editor_instances, "_set_renaming", true)
 
-	undo_redo.add_do_method(Lv2Server, "set_lv2_name", get_index(), attempt)
-	undo_redo.add_undo_method(Lv2Server, "set_lv2_name", get_index(), current)
+	undo_redo.add_do_method(Lv2Server, "set_instance_name", get_index(), attempt)
+	undo_redo.add_undo_method(Lv2Server, "set_instance_name", get_index(), current)
 
-	undo_redo.add_do_method(editor_lv2_instances, "_update_lv2_instance", get_index())
-	undo_redo.add_undo_method(editor_lv2_instances, "_update_lv2_instance", get_index())
+	undo_redo.add_do_method(editor_instances, "_update_instance", get_index())
+	undo_redo.add_undo_method(editor_instances, "_update_instance", get_index())
 
-	undo_redo.add_do_method(editor_lv2_instances, "_set_renaming_lv2", false)
-	undo_redo.add_undo_method(editor_lv2_instances, "_set_renaming_lv2", false)
+	undo_redo.add_do_method(editor_instances, "_set_renaming", false)
+	undo_redo.add_undo_method(editor_instances, "_set_renaming", false)
 	undo_redo.commit_action()
 
-	updating_lv2 = false
+	updating_instance = false
 
 	return attempt
 
@@ -591,15 +579,13 @@ func _resource_selected(resource: Resource, _inspect: bool):
 
 
 func _on_plugin_option_item_selected(index: int) -> void:
-	updating_lv2 = true
+	updating_instance = true
 
 	undo_redo.create_action("Set Lv2 uri")
-	undo_redo.add_do_method(Lv2Server, "set_lv2_uri", get_index(), plugin_info[index])
-	undo_redo.add_undo_method(
-		Lv2Server, "set_lv2_uri", get_index(), Lv2Server.get_lv2_uri(get_index())
-	)
-	undo_redo.add_do_method(editor_lv2_instances, "_update_lv2_instance", get_index())
-	undo_redo.add_undo_method(editor_lv2_instances, "_update_lv2_instance", get_index())
+	undo_redo.add_do_method(Lv2Server, "set_uri", get_index(), plugin_info[index])
+	undo_redo.add_undo_method(Lv2Server, "set_uri", get_index(), Lv2Server.get_uri(get_index()))
+	undo_redo.add_do_method(editor_instances, "_update_instance", get_index())
+	undo_redo.add_undo_method(editor_instances, "_update_instance", get_index())
 	undo_redo.commit_action()
 
-	updating_lv2 = false
+	updating_instance = false

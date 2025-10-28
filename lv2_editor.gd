@@ -17,6 +17,7 @@ func initialize(lv2_instance: Lv2Instance):
 	lv2 = lv2_instance
 	for input_control in lv2_instance.get_input_controls():
 		var value = lv2_instance.get_input_control_channel(input_control.index)
+
 		if input_control.get_choices().size() > 0:
 			var dropdown: Lv2ControlDropdown = dropdown_scene.instantiate()
 			dropdown.call_deferred("initialize", input_control, value)
@@ -35,10 +36,10 @@ func update(lv2_instance: Lv2Instance):
 		var value = lv2_instance.get_input_control_channel(input_control.index)
 		if input_control.get_choices().size() > 0:
 			var dropdown: Lv2ControlDropdown = container.get_child(input_control.index)
-			dropdown.dropdown.selected = value
+			dropdown.dropdown.selected = int(value)
 		else:
 			var slider: Lv2ControlSlider = container.get_child(input_control.index)
-			slider.line_edit.text = str(value)
+			slider.line_edit.text = slider._format_value(value)
 
 
 func _on_value_changed(control: int, value: float):

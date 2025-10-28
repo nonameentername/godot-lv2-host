@@ -43,7 +43,7 @@ private:
     int sfont_id;
     Lv2Host *lv2_host;
     bool finished;
-    String lv2_name;
+    String instance_name;
     bool solo;
     bool mute;
     bool bypass;
@@ -79,14 +79,12 @@ private:
     Channel output_left_channel;
     Channel output_right_channel;
 
-    HashMap<double, double> lv2_data;
-
     TypedArray<Lv2Control> input_controls;
     TypedArray<Lv2Control> output_controls;
 
     TypedArray<String> presets;
 
-    void configure_lv2();
+    void configure();
 
     Error start_thread();
     void stop_thread();
@@ -126,8 +124,8 @@ public:
     void set_channel_sample(AudioFrame *p_buffer, float p_rate, int p_frames, int left, int right);
     int get_channel_sample(AudioFrame *p_buffer, float p_rate, int p_frames, int left, int right);
 
-    void set_lv2_name(const String &name);
-    const String &get_lv2_name();
+    void set_instance_name(const String &name);
+    const String &get_instance_name();
 
     int get_input_channel_count();
     int get_output_channel_count();

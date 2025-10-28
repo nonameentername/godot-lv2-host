@@ -19,9 +19,9 @@ private:
     String lv2_name;
     bool active;
 
-    Lv2Instance *get_lv2_instance();
-    void lv2_layout_changed();
-    void lv2_ready(String lv2_name);
+    Lv2Instance *get_instance();
+    void on_layout_changed();
+    void on_lv2_ready(String lv2_name);
 
 public:
     virtual String get_stream_name() const;
@@ -33,8 +33,8 @@ public:
     ~AudioStreamLv2();
 
     virtual Ref<AudioStreamPlayback> _instantiate_playback() const override;
-    void set_lv2_name(const String &name);
-    const String &get_lv2_name() const;
+    void set_instance_name(const String &name);
+    const String &get_instance_name() const;
 
     void set_active(bool active);
     bool is_active();

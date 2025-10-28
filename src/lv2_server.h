@@ -30,19 +30,19 @@ private:
 
     LilvWorld *world;
     Lv2Host *lv2_host;
-    HashMap<String, Lv2Instance *> lv2_map;
+    HashMap<String, Lv2Instance *> instance_map;
 
     bool thread_exited;
     mutable bool exit_thread;
     Ref<Thread> thread;
     Ref<Mutex> mutex;
 
-    void on_lv2_ready(String lv2_name);
+    void on_ready(String instance_name);
     void add_property(String name, String default_value, GDExtensionVariantType extension_type, PropertyHint hint);
 
 protected:
     bool solo_mode;
-    Vector<Lv2Instance *> lv2_instances;
+    Vector<Lv2Instance *> instances;
     static void _bind_methods();
     static Lv2Server *singleton;
 
@@ -62,44 +62,44 @@ public:
     void process();
     void thread_func();
 
-    void set_lv2_count(int p_count);
-    int get_lv2_count() const;
+    void set_instance_count(int p_count);
+    int get_instance_count() const;
 
-    void remove_lv2(int p_index);
-    void add_lv2(int p_at_pos = -1);
+    void remove_instance(int p_index);
+    void add_instance(int p_at_pos = -1);
 
-    void move_lv2(int p_lv2, int p_to_pos);
+    void move_instance(int p_index, int p_to_pos);
 
-    void set_lv2_name(int p_lv2, const String &p_name);
-    String get_lv2_name(int p_lv2) const;
-    int get_lv2_index(const StringName &p_lv2_name) const;
+    void set_instance_name(int p_index, const String &p_name);
+    String get_instance_name(int p_index) const;
+    int get_instance_index(const StringName &p_name) const;
 
-    String get_lv2_name_options() const;
+    String get_name_options() const;
 
-    int get_lv2_channel_count(int p_lv2) const;
+    int get_channel_count(int p_index) const;
 
-    void set_lv2_volume_db(int p_lv2, float p_volume_db);
-    float get_lv2_volume_db(int p_lv2) const;
+    void set_volume_db(int p_index, float p_volume_db);
+    float get_volume_db(int p_index) const;
 
-    void set_lv2_uri(int p_lv2, String p_uri);
-    String get_lv2_uri(int p_lv2) const;
+    void set_uri(int p_index, String p_uri);
+    String get_uri(int p_index) const;
 
-    void set_lv2_solo(int p_lv2, bool p_enable);
-    bool is_lv2_solo(int p_lv2) const;
+    void set_solo(int p_index, bool p_enable);
+    bool is_solo(int p_index) const;
 
-    void set_lv2_mute(int p_lv2, bool p_enable);
-    bool is_lv2_mute(int p_lv2) const;
+    void set_mute(int p_index, bool p_enable);
+    bool is_mute(int p_index) const;
 
-    void set_lv2_bypass(int p_lv2, bool p_enable);
-    bool is_lv2_bypassing(int p_lv2) const;
+    void set_bypass(int p_index, bool p_enable);
+    bool is_bypassing(int p_index) const;
 
-    float get_lv2_channel_peak_volume_db(int p_lv2, int p_channel) const;
+    float get_channel_peak_volume_db(int p_index, int p_channel) const;
 
-    bool is_lv2_channel_active(int p_lv2, int p_channel) const;
+    bool is_channel_active(int p_index, int p_channel) const;
 
-    bool load_default_lv2_layout();
-    void set_lv2_layout(const Ref<Lv2Layout> &p_lv2_layout);
-    Ref<Lv2Layout> generate_lv2_layout() const;
+    bool load_default_layout();
+    void set_layout(const Ref<Lv2Layout> &p_layout);
+    Ref<Lv2Layout> generate_layout() const;
 
     Error start();
     void lock();
@@ -109,9 +109,9 @@ public:
     TypedArray<String> get_plugins();
     String get_plugin_name(String p_uri);
 
-    Lv2Instance *get_lv2(const String &p_name);
-    Lv2Instance *get_lv2_by_index(int p_index);
-    Lv2Instance *get_lv2_(const Variant &p_name);
+    Lv2Instance *get_instance(const String &p_name);
+    Lv2Instance *get_instance_by_index(int p_index);
+    Lv2Instance *get_instance_(const Variant &p_name);
 
     String get_version();
     String get_build();

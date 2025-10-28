@@ -22,7 +22,7 @@ class Lv2Layout : public Resource {
         }
     };
 
-    Vector<Lv2> lv2s;
+    Vector<Lv2> instances;
 
 protected:
     static void _bind_methods();

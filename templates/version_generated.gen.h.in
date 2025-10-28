@@ -1,2 +1,2 @@
-#define GODOT_LV2_VERSION "${version}"
-#define GODOT_LV2_BUILD "${build}"
+#define GODOT_LV2_HOST_VERSION "${version}"
+#define GODOT_LV2_HOST_BUILD "${build}"

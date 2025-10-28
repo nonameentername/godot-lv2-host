@@ -78,7 +78,7 @@ size_flags_vertical = 3
 wait_time = 0.8
 one_shot = true
 
-[connection signal="pressed" from="TopBoxContainer/AddLv2" to="." method="_add_lv2"]
+[connection signal="pressed" from="TopBoxContainer/AddLv2" to="." method="_add_instance"]
 [connection signal="pressed" from="TopBoxContainer/Load" to="." method="_load_layout"]
 [connection signal="pressed" from="TopBoxContainer/SaveAs" to="." method="_save_as_layout"]
 [connection signal="pressed" from="TopBoxContainer/LoadDefault" to="." method="_load_default_layout"]

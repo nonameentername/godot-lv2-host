@@ -36,8 +36,8 @@ func _notification(what):
 
 
 func _can_drop_data(_at_position, data):
-	return data.has("type") and data["type"] == "move_lv2"
+	return data.has("type") and data["type"] == "move_instance"
 
 
 func _drop_data(_at_position, data):
-	emit_signal("dropped", data["index"], Lv2Server.get_lv2_count())
+	emit_signal("dropped", data["index"], Lv2Server.get_instance_count())

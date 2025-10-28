@@ -8,18 +8,34 @@ var channel = 0
 
 
 func _ready():
+	OS.open_midi_inputs()
+
 	editor = $lv2_editor
 	print("godot-lv2-host version: ", Lv2Server.get_version(), " build: ", Lv2Server.get_build())
-	Lv2Server.lv2_layout_changed.connect(_on_lv2_layout_changed)
+	Lv2Server.layout_changed.connect(_on_layout_changed)
 	Lv2Server.lv2_ready.connect(_on_lv2_ready)
 
 
-func _on_lv2_layout_changed():
+func _on_layout_changed():
 	pass
 
 
+func _input(input_event):
+	if input_event is InputEventMIDI:
+		_send_midi_info(input_event)
+
+
+func _send_midi_info(midi_event):
+	if midi_event.message == MIDI_MESSAGE_NOTE_ON:
+		lv2.note_on(bus, channel, midi_event.pitch, midi_event.velocity)
+	if midi_event.message == MIDI_MESSAGE_NOTE_OFF:
+		lv2.note_off(bus, channel, midi_event.pitch)
+	if midi_event.message == MIDI_MESSAGE_CONTROL_CHANGE:
+		lv2.control_change(bus, channel, midi_event.controller_number, midi_event.controller_value)
+
+
 func _on_lv2_ready(_lv2_name: String):
-	lv2 = Lv2Server.get_lv2("Main")
+	lv2 = Lv2Server.get_instance("Main")
 	var input_controls: Array[Lv2Control] = lv2.get_input_controls()
 	for input_control in input_controls:
 		if input_control.logarithmic:

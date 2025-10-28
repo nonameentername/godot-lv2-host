@@ -6,11 +6,11 @@ bool Lv2Layout::_set(const StringName &p_name, const Variant &p_value) {
     String s = p_name;
     if (s.begins_with("lv2/")) {
         int index = s.get_slice("/", 1).to_int();
-        if (lv2s.size() <= index) {
-            lv2s.resize(index + 1);
+        if (instances.size() <= index) {
+            instances.resize(index + 1);
         }
 
-        Lv2 &lv2 = lv2s.write[index];
+        Lv2 &lv2 = instances.write[index];
 
         String what = s.get_slice("/", 2);
 
@@ -40,11 +40,11 @@ bool Lv2Layout::_get(const StringName &p_name, Variant &r_ret) const {
     String s = p_name;
     if (s.begins_with("lv2/")) {
         int index = s.get_slice("/", 1).to_int();
-        if (index < 0 || index >= lv2s.size()) {
+        if (index < 0 || index >= instances.size()) {
             return false;
         }
 
-        const Lv2 &lv2 = lv2s[index];
+        const Lv2 &lv2 = instances[index];
 
         String what = s.get_slice("/", 2);
 
@@ -71,7 +71,7 @@ bool Lv2Layout::_get(const StringName &p_name, Variant &r_ret) const {
 }
 
 void Lv2Layout::_get_property_list(List<PropertyInfo> *p_list) const {
-    for (int i = 0; i < lv2s.size(); i++) {
+    for (int i = 0; i < instances.size(); i++) {
         p_list->push_back(PropertyInfo(Variant::STRING, "lv2/" + itos(i) + "/name", PROPERTY_HINT_NONE, "",
                                        PROPERTY_USAGE_NO_EDITOR | PROPERTY_USAGE_INTERNAL));
         p_list->push_back(PropertyInfo(Variant::BOOL, "lv2/" + itos(i) + "/solo", PROPERTY_HINT_NONE, "",
@@ -88,8 +88,8 @@ void Lv2Layout::_get_property_list(List<PropertyInfo> *p_list) const {
 }
 
 Lv2Layout::Lv2Layout() {
-    lv2s.resize(1);
-    lv2s.write[0].name = "Main";
+    instances.resize(1);
+    instances.write[0].name = "Main";
 }
 
 void Lv2Layout::_bind_methods() {

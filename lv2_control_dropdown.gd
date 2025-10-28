@@ -10,7 +10,7 @@ var control_index: int
 var integer: bool
 
 
-func initialize(lv2_control: Lv2Control, value: float) -> void:
+func initialize(lv2_control: Lv2Control, _value: float) -> void:
 	control_index = lv2_control.index
 	integer = lv2_control.integer
 

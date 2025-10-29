@@ -431,6 +431,8 @@ void Lv2Instance::thread_func() {
             for (int frame = 0; frame < p_frames; frame++) {
                 lv2_host->get_input_channel_buffer(channel)[frame] = temp_buffer[frame];
             }
+
+            input_channels[channel].update_read_index(p_frames);
         }
 
         int result = lv2_host->perform(p_frames);

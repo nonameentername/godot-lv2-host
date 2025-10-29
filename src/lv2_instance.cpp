@@ -70,6 +70,8 @@ void Lv2Instance::configure() {
         std::cerr << "Failed to prepare/connect ports\n";
     }
 
+    input_controls.clear();
+
     for (int i = 0; i < lv2_host->get_input_control_count(); i++) {
         const LilvControl *control = lv2_host->get_input_control(i);
         Lv2Control *lv2_control = memnew(Lv2Control);
@@ -91,6 +93,8 @@ void Lv2Instance::configure() {
 
         input_controls.append(lv2_control);
     }
+
+    output_controls.clear();
 
     for (int i = 0; i < lv2_host->get_output_control_count(); i++) {
         const LilvControl *control = lv2_host->get_output_control(i);
@@ -181,7 +185,6 @@ void Lv2Instance::reset() {
         }
         // TODO: handle resetting the host
         // lv2_host->Reset();
-        configure();
     }
 }
 
@@ -524,6 +527,13 @@ const String &Lv2Instance::get_instance_name() {
     return instance_name;
 }
 
+void Lv2Instance::set_uri(const String &p_uri) {
+    reset();
+    uri = p_uri;
+    configure();
+    start();
+}
+
 int Lv2Instance::get_input_channel_count() {
     if (lv2_host != NULL) {
         return lv2_host->get_input_channel_count();
@@ -588,6 +598,7 @@ void Lv2Instance::set_active(bool p_active) {
     if (finished && p_active) {
         reset();
         finished = false;
+        configure();
         start();
     }
 }

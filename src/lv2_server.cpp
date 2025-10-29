@@ -102,7 +102,6 @@ void Lv2Server::initialize() {
 
     add_property("audio/lv2-host/default_lv2_layout", "res://default_lv2_layout.tres", GDEXTENSION_VARIANT_TYPE_STRING,
                  PROPERTY_HINT_FILE);
-    add_property("audio/lv2-host/use_resource_files", "true", GDEXTENSION_VARIANT_TYPE_BOOL, PROPERTY_HINT_NONE);
     add_property("audio/lv2-host/hide_lv2_logs", "true", GDEXTENSION_VARIANT_TYPE_BOOL, PROPERTY_HINT_NONE);
 
     if (!load_default_layout()) {
@@ -396,7 +395,7 @@ void Lv2Server::set_uri(int p_index, String p_uri) {
 
     edited = true;
 
-    instances[p_index]->uri = p_uri;
+    instances[p_index]->set_uri(p_uri);
 }
 
 String Lv2Server::get_uri(int p_index) const {

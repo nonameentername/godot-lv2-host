@@ -127,6 +127,8 @@ public:
     void set_instance_name(const String &name);
     const String &get_instance_name();
 
+    void set_uri(const String &p_uri);
+
     int get_input_channel_count();
     int get_output_channel_count();
 

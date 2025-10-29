@@ -1,9 +1,11 @@
-[gd_scene load_steps=4 format=3 uid="uid://n6csjkhxjfm2"]
+[gd_scene load_steps=5 format=3 uid="uid://n6csjkhxjfm2"]
 
 [ext_resource type="Script" uid="uid://2lpq8pb0mdfe" path="res://main.gd" id="1_ob6y6"]
 [ext_resource type="PackedScene" uid="uid://qyhcoewybtp2" path="res://lv2_editor.tscn" id="2_0xm2m"]
 
 [sub_resource type="AudioStreamLv2" id="AudioStreamLv2_ig7tw"]
+
+[sub_resource type="AudioStreamLv2Channel" id="AudioStreamLv2Channel_0xm2m"]
 
 [node name="main" type="Node2D"]
 script = ExtResource("1_ob6y6")
@@ -75,7 +77,9 @@ stream = SubResource("AudioStreamLv2_ig7tw")
 autoplay = true
 
 [node name="Lv2ChannelPlayer" type="AudioStreamPlayer" parent="."]
+stream = SubResource("AudioStreamLv2Channel_0xm2m")
 volume_db = -80.0
+autoplay = true
 
 [node name="lv2_editor" parent="." instance=ExtResource("2_0xm2m")]
 

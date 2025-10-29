@@ -10,6 +10,8 @@
 
 #include "audio_stream_lv2.h"
 #include "audio_stream_player_lv2.h"
+#include "audio_stream_lv2_channel.h"
+#include "audio_stream_player_lv2_channel.h"
 #include "editor_audio_meter_notches_lv2.h"
 #include "lv2_control.h"
 #include "lv2_instance.h"
@@ -29,6 +31,8 @@ void initialize_godot_lv2_host_module(ModuleInitializationLevel p_level) {
     ClassDB::register_class<EditorAudioMeterNotchesLv2>();
     ClassDB::register_class<AudioStreamLv2>();
     ClassDB::register_class<AudioStreamPlaybackLv2>();
+    ClassDB::register_class<AudioStreamLv2Channel>();
+    ClassDB::register_class<AudioStreamPlaybackLv2Channel>();
     ClassDB::register_class<Lv2Control>();
     ClassDB::register_class<Lv2Layout>();
     ClassDB::register_class<Lv2ServerNode>();

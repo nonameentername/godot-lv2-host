@@ -29,14 +29,14 @@ endif
 SHELL_COMMAND = bash
 
 docker-ubuntu:
-	docker build -t godot-lilv-ubuntu ./platform/ubuntu
+	docker build -t godot-lv2host-ubuntu ./platform/ubuntu
 
 shell-ubuntu: docker-ubuntu
-	docker run -it --rm -v ${CURDIR}:${CURDIR} --user ${UID}:${GID} -w ${CURDIR} godot-lilv-ubuntu ${SHELL_COMMAND}
+	docker run -it --rm -v ${CURDIR}:${CURDIR} --user ${UID}:${GID} -w ${CURDIR} godot-lv2host-ubuntu ${SHELL_COMMAND}
 
 ubuntu:
 	$(MAKE) shell-ubuntu SHELL_COMMAND='./platform/ubuntu/build_debug.sh'
 	$(MAKE) shell-ubuntu SHELL_COMMAND='./platform/ubuntu/build_release.sh'
 
 clean:
-	rm -rf addons/lilv/bin modules/godot/bin vcpkg_installed
+	rm -rf addons/lv2-host/bin modules/godot/bin vcpkg_installed

@@ -99,8 +99,7 @@ elif env["platform"] == "macos":
     env.Append(LIBS=[lilv_library, "serd-0", "sord-0", "zix-0", "sratom-0"])
 
     if env["dev_build"]:
-        env.Append(LIBPATH=["addons/lv2-host/bin/osxcross/debug/vcpkg_installed/univeral-osxcross/lib"])
-        #env.Append(LIBPATH=["addons/lv2-host/bin/osxcross/debug/vcpkg_installed/univeral-osxcross/debug/lib"])
+        env.Append(LIBPATH=["addons/lv2-host/bin/osxcross/debug/vcpkg_installed/univeral-osxcross/debug/lib"])
         env.Append(CPPPATH=["addons/lv2-host/bin/osxcross/debug/vcpkg_installed/univeral-osxcross/include"])
         #env.Append(RPATH=["", "."])
     else:
@@ -112,8 +111,7 @@ elif env["platform"] == "linux":
     env.Append(LIBS=[lilv_library, "serd-0", "sord-0", "zix-0", "sratom-0"])
 
     if env["dev_build"]:
-        env.Append(LIBPATH=["addons/lv2-host/bin/linux/debug/vcpkg_installed/x64-linux/lib"])
-        #env.Append(LIBPATH=["addons/lv2-host/bin/linux/debug/vcpkg_installed/x64-linux/debug/lib"])
+        env.Append(LIBPATH=["addons/lv2-host/bin/linux/debug/vcpkg_installed/x64-linux/debug/lib"])
         env.Append(CPPPATH=["addons/lv2-host/bin/linux/debug/vcpkg_installed/x64-linux/include", "addons/lv2-host/bin/linux/debug/vcpkg_installed/x64-linux/include/lilv-0"])
         #env.Append(RPATH=["", "."])
     else:

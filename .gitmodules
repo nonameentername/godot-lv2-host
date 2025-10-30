@@ -1,5 +1,5 @@
 [submodule "vcpkg"]
-	path = vcpkg
+	path = modules/vcpkg
 	url = https://github.com/microsoft/vcpkg.git
 [submodule "godot-cpp"]
 	path = godot-cpp

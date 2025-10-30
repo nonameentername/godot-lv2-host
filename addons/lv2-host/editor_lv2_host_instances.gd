@@ -164,6 +164,7 @@ func _duplicate_instance(which: int):
 	undo_redo.add_do_method(Lv2Server, "set_solo", add_at_pos, Lv2Server.is_solo(which))
 	undo_redo.add_do_method(Lv2Server, "set_mute", add_at_pos, Lv2Server.is_mute(which))
 	undo_redo.add_do_method(Lv2Server, "set_bypass", add_at_pos, Lv2Server.is_bypassing(which))
+	undo_redo.add_do_method(Lv2Server, "set_uri", add_at_pos, Lv2Server.get_uri(which))
 	undo_redo.add_undo_method(Lv2Server, "remove_instance", add_at_pos)
 	undo_redo.add_do_method(self, "_update")
 	undo_redo.add_undo_method(self, "_update")

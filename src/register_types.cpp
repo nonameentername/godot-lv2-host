@@ -8,12 +8,12 @@
 #include <godot_cpp/core/defs.hpp>
 #include <godot_cpp/godot.hpp>
 
-#include "audio_stream_lv2.h"
-#include "audio_stream_player_lv2.h"
-#include "audio_stream_lv2_channel.h"
-#include "audio_stream_player_lv2_channel.h"
-#include "audio_effect_set_lv2_channel.h"
 #include "audio_effect_get_lv2_channel.h"
+#include "audio_effect_set_lv2_channel.h"
+#include "audio_stream_lv2.h"
+#include "audio_stream_lv2_channel.h"
+#include "audio_stream_player_lv2.h"
+#include "audio_stream_player_lv2_channel.h"
 #include "editor_audio_meter_notches_lv2.h"
 #include "lv2_control.h"
 #include "lv2_instance.h"

@@ -1,9 +1,9 @@
 #include "audio_stream_lv2_channel.h"
 #include "audio_stream_player_lv2_channel.h"
-#include "lv2_instance.h"
-#include "lv2_server.h"
 #include "godot_cpp/core/property_info.hpp"
 #include "godot_cpp/variant/string_name.hpp"
+#include "lv2_instance.h"
+#include "lv2_server.h"
 
 using namespace godot;
 

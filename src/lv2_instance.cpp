@@ -2,6 +2,7 @@
 #include "godot_cpp/classes/audio_server.hpp"
 #include "godot_cpp/classes/audio_stream_mp3.hpp"
 #include "godot_cpp/classes/audio_stream_wav.hpp"
+#include "godot_cpp/classes/os.hpp"
 #include "godot_cpp/classes/project_settings.hpp"
 #include "godot_cpp/classes/time.hpp"
 #include "godot_cpp/variant/utility_functions.hpp"
@@ -32,6 +33,16 @@ Lv2Instance::Lv2Instance() {
     // TODO: update block size
     int p_frames = 512;
     lv2_host = new Lv2Host(world, mix_rate, p_frames);
+
+    String lv2_path = ProjectSettings::get_singleton()->get_setting("audio/lv2-host/lv2_path");
+
+    if (lv2_path.length() > 0 && lv2_path.is_absolute_path()) {
+        lv2_path = ProjectSettings::get_singleton()->globalize_path(lv2_path);
+
+        LilvNode *lv2_node_path = lilv_new_string(world, lv2_path.ascii());
+        lilv_world_set_option(world, LILV_OPTION_LV2_PATH, lv2_node_path);
+        lilv_node_free(lv2_node_path);
+    }
 
     if (!lv2_host->load_world()) {
         // TODO: log to godot

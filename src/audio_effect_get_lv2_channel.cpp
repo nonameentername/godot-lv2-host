@@ -1,6 +1,6 @@
 #include "audio_effect_get_lv2_channel.h"
-#include "lv2_server.h"
 #include "godot_cpp/classes/audio_server.hpp"
+#include "lv2_server.h"
 #include <algorithm>
 
 using namespace godot;
@@ -86,13 +86,12 @@ void AudioEffectGetLv2Channel::_bind_methods() {
                           "get_channel_left");
     ClassDB::bind_method(D_METHOD("set_channel_right", "channel"), &AudioEffectGetLv2Channel::set_channel_right);
     ClassDB::bind_method(D_METHOD("get_channel_right"), &AudioEffectGetLv2Channel::get_channel_right);
-    ClassDB::add_property("AudioEffectGetLv2Channel", PropertyInfo(Variant::INT, "channel_right"),
-                          "set_channel_right", "get_channel_right");
-    ClassDB::bind_method(D_METHOD("set_mix", "mix"),
-                         &AudioEffectGetLv2Channel::set_mix);
+    ClassDB::add_property("AudioEffectGetLv2Channel", PropertyInfo(Variant::INT, "channel_right"), "set_channel_right",
+                          "get_channel_right");
+    ClassDB::bind_method(D_METHOD("set_mix", "mix"), &AudioEffectGetLv2Channel::set_mix);
     ClassDB::bind_method(D_METHOD("get_mix"), &AudioEffectGetLv2Channel::get_mix);
-    ClassDB::add_property("AudioEffectGetLv2Channel", PropertyInfo(Variant::FLOAT, "mix", PROPERTY_HINT_RANGE, "0,1,0.001"),
-                          "set_mix", "get_mix");
+    ClassDB::add_property("AudioEffectGetLv2Channel",
+                          PropertyInfo(Variant::FLOAT, "mix", PROPERTY_HINT_RANGE, "0,1,0.001"), "set_mix", "get_mix");
 
     ClassDB::bind_method(D_METHOD("layout_changed"), &AudioEffectGetLv2Channel::layout_changed);
 }
@@ -105,8 +104,7 @@ Ref<AudioEffectInstance> AudioEffectGetLv2Channel::_instantiate() {
     return ins;
 }
 
-void AudioEffectGetLv2ChannelInstance::_process(const void *p_src_frames, AudioFrame *p_dst_frames,
-                                                   int p_frame_count) {
+void AudioEffectGetLv2ChannelInstance::_process(const void *p_src_frames, AudioFrame *p_dst_frames, int p_frame_count) {
     AudioFrame *src_frames = (AudioFrame *)p_src_frames;
 
     if (temp_buffer.size() != p_frame_count) {
@@ -116,7 +114,8 @@ void AudioEffectGetLv2ChannelInstance::_process(const void *p_src_frames, AudioF
     Lv2Instance *instance = Lv2Server::get_singleton()->get_instance(base->get_instance_name());
     if (instance != NULL) {
         int p_rate = 1;
-        instance->get_channel_sample(temp_buffer.ptrw(), p_rate, p_frame_count, base->channel_left, base->channel_right);
+        instance->get_channel_sample(temp_buffer.ptrw(), p_rate, p_frame_count, base->channel_left,
+                                     base->channel_right);
     }
 
     for (int i = 0; i < p_frame_count; i++) {

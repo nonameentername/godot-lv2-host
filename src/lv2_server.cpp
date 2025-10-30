@@ -10,6 +10,7 @@
 #include "godot_cpp/core/error_macros.hpp"
 #include "godot_cpp/core/memory.hpp"
 #include "godot_cpp/variant/callable_method_pointer.hpp"
+#include "lilv/lilv.h"
 #include "lv2_layout.h"
 #include "lv2_server.h"
 #include "lv2_server_node.h"
@@ -95,14 +96,25 @@ void Lv2Server::initialize() {
     // TODO: update block size
     lv2_host = new Lv2Host(world, mix_rate, 512);
 
+    add_property("audio/lv2-host/default_lv2_layout", "res://default_lv2_layout.tres", GDEXTENSION_VARIANT_TYPE_STRING,
+                 PROPERTY_HINT_FILE);
+    add_property("audio/lv2-host/lv2_path", "", GDEXTENSION_VARIANT_TYPE_STRING, PROPERTY_HINT_DIR);
+    add_property("audio/lv2-host/hide_lv2_logs", "true", GDEXTENSION_VARIANT_TYPE_BOOL, PROPERTY_HINT_NONE);
+
+    String lv2_path = ProjectSettings::get_singleton()->get_setting("audio/lv2-host/lv2_path");
+
+    if (lv2_path.length() > 0 && lv2_path.is_absolute_path()) {
+        lv2_path = ProjectSettings::get_singleton()->globalize_path(lv2_path);
+
+        LilvNode *lv2_node_path = lilv_new_string(world, lv2_path.ascii());
+        lilv_world_set_option(world, LILV_OPTION_LV2_PATH, lv2_node_path);
+        lilv_node_free(lv2_node_path);
+    }
+
     if (!lv2_host->load_world()) {
         // TODO: log to godot
         std::cerr << "Failed to create/load lv2 world\n";
     }
-
-    add_property("audio/lv2-host/default_lv2_layout", "res://default_lv2_layout.tres", GDEXTENSION_VARIANT_TYPE_STRING,
-                 PROPERTY_HINT_FILE);
-    add_property("audio/lv2-host/hide_lv2_logs", "true", GDEXTENSION_VARIANT_TYPE_BOOL, PROPERTY_HINT_NONE);
 
     if (!load_default_layout()) {
         set_instance_count(1);

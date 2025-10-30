@@ -869,6 +869,10 @@ void Lv2Host::load_preset(std::string preset) {
 }
 
 int Lv2Host::perform(int p_frames) {
+    if (!inst) {
+        return p_frames;
+    }
+
     rt_deliver_worker_responses();
 
     for (int i = 0; i < atom_inputs.size(); i++) {

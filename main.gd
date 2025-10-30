@@ -8,7 +8,8 @@ var channel = 0
 
 
 func _ready():
-	OS.open_midi_inputs()
+	if DisplayServer.get_name() != "headless":
+		OS.open_midi_inputs()
 
 	editor = $lv2_editor
 	print("godot-lv2-host version: ", Lv2Server.get_version(), " build: ", Lv2Server.get_build())

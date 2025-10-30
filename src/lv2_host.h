@@ -54,6 +54,7 @@ struct AtomIn {
 
 struct AtomOut {
     uint32_t index{};
+    bool midi{};
     std::vector<std::max_align_t> buf; // aligned storage
     LV2_Atom_Sequence *seq{nullptr};
 };

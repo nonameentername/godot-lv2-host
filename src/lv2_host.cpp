@@ -510,7 +510,7 @@ bool Lv2Host::prepare_ports_and_buffers(int p_frames) {
 
         // Atom outputs
         if (lilv_port_is_a(plugin, cport, ATOM) && is_output) {
-            bool is_sequence = false;
+            bool is_sequence = false, supports_midi = false;
             LilvNodes *buftypes = lilv_port_get_value(plugin, cport, BUFTYPE);
             LILV_FOREACH(nodes, it, buftypes) {
                 const LilvNode *n = lilv_nodes_get(buftypes, it);
@@ -520,9 +520,19 @@ bool Lv2Host::prepare_ports_and_buffers(int p_frames) {
             }
             lilv_nodes_free(buftypes);
 
+            LilvNodes *supp = lilv_port_get_value(plugin, cport, SUPPORTS);
+            LILV_FOREACH(nodes, it2, supp) {
+                const LilvNode *n = lilv_nodes_get(supp, it2);
+                if (lilv_node_equals(n, MIDI_EVENT)) {
+                    supports_midi = true;
+                }
+            }
+            lilv_nodes_free(supp);
+
             if (is_sequence) {
                 AtomOut o{};
                 o.index = i;
+                o.midi = supports_midi;
 
 #if LV2HOST_DBG
                 const size_t words = ([](uint32_t bytes) {
@@ -877,6 +887,11 @@ int Lv2Host::perform(int p_frames) {
 
     for (int i = 0; i < atom_inputs.size(); i++) {
         AtomIn &atom_input = atom_inputs[i];
+
+        if (!atom_input.midi) {
+            continue;
+        }
+
         const uint32_t bytes = (uint32_t)(atom_input.buf.size() * sizeof(std::max_align_t));
         lv2_atom_forge_set_buffer(&atom_input.forge, reinterpret_cast<uint8_t *>(atom_input.buf.data()), bytes);
         LV2_Atom_Forge_Frame seq_frame;
@@ -897,6 +912,10 @@ int Lv2Host::perform(int p_frames) {
 
     // 3) Prepare Atom OUTPUTS: mark empty for this block
     for (auto &atom_output : atom_outputs) {
+        if (!atom_output.midi) {
+            continue;
+        }
+
         const uint32_t buf_bytes = (uint32_t)(atom_output.buf.size() * sizeof(std::max_align_t));
         const uint32_t body_capacity = (buf_bytes > sizeof(LV2_Atom)) ? (buf_bytes - (uint32_t)sizeof(LV2_Atom)) : 0u;
 
@@ -917,6 +936,11 @@ int Lv2Host::perform(int p_frames) {
     //  5) Collect OUTPUT events → ABSOLUTE time → out ring
     for (int i = 0; i < atom_outputs.size(); i++) {
         AtomOut &atom_output = atom_outputs[i];
+
+        if (!atom_output.midi) {
+            continue;
+        }
+
         auto *seq = atom_output.seq;
         if (seq->atom.size <= sizeof(LV2_Atom_Sequence_Body)) {
             continue;
@@ -981,6 +1005,10 @@ float *Lv2Host::get_output_channel_buffer(int p_channel) {
 }
 
 void Lv2Host::write_midi_in(int p_bus, const MidiEvent &p_midi_event) {
+    if (p_bus >= midi_input_buffer.size()) {
+        return;
+    }
+
     int event[MidiEvent::DATA_SIZE];
 
     for (int i = 0; i < MidiEvent::DATA_SIZE; i++) {
@@ -991,6 +1019,10 @@ void Lv2Host::write_midi_in(int p_bus, const MidiEvent &p_midi_event) {
 }
 
 bool Lv2Host::read_midi_in(int p_bus, MidiEvent &p_midi_event) {
+    if (p_bus >= midi_input_buffer.size()) {
+        return 0;
+    }
+
     int event[MidiEvent::DATA_SIZE];
     int read = midi_input_buffer[p_bus].read_channel(event, MidiEvent::DATA_SIZE);
 
@@ -1005,6 +1037,10 @@ bool Lv2Host::read_midi_in(int p_bus, MidiEvent &p_midi_event) {
 }
 
 void Lv2Host::write_midi_out(int p_bus, const MidiEvent &p_midi_event) {
+    if (p_bus >= midi_output_buffer.size()) {
+        return;
+    }
+
     int event[MidiEvent::DATA_SIZE];
 
     for (int i = 0; i < MidiEvent::DATA_SIZE; i++) {
@@ -1015,6 +1051,10 @@ void Lv2Host::write_midi_out(int p_bus, const MidiEvent &p_midi_event) {
 }
 
 bool Lv2Host::read_midi_out(int p_bus, MidiEvent &p_midi_event) {
+    if (p_bus >= midi_output_buffer.size()) {
+        return 0;
+    }
+
     int event[MidiEvent::DATA_SIZE];
     int read = midi_output_buffer[p_bus].read_channel(event, MidiEvent::DATA_SIZE);
 

@@ -89,7 +89,24 @@ env.Alias("compiledb", compilation_db)
 env = SConscript("godot-cpp/SConstruct", {"env": env, "customs": customs})
 
 if env["platform"] == "windows":
-    env.Append(CPPFLAGS=["-DMINGW"])
+    env.Append(CPPFLAGS=["-DMINGW",
+                         "-DLILV_STATIC",
+                         "-DSERD_STATIC",
+                         "-DSORD_STATIC",
+                         "-DSRATOM_STATIC",
+                         "-DZIX_STATIC",
+                         ])
+    lilv_library = "lilv-0"
+    env.Append(LIBS=[lilv_library, 'sratom-0', 'sord-0', 'serd-0', 'zix-0'])
+
+    if env["dev_build"]:
+        env.Append(LIBPATH=["addons/lv2-host/bin/windows/debug/vcpkg_installed/x64-mingw-static/debug/lib"])
+        env.Append(CPPPATH=["addons/lv2-host/bin/windows/debug/vcpkg_installed/x64-mingw-static/include",
+                            "addons/lv2-host/bin/windows/debug/vcpkg_installed/x64-mingw-static/include/lilv-0"])
+    else:
+        env.Append(LIBPATH=["addons/lv2-host/bin/windows/release/vcpkg_installed/x64-mingw-static/lib"])
+        env.Append(CPPPATH=["addons/lv2-host/bin/windows/release/vcpkg_installed/x64-mingw-static/include",
+                            "addons/lv2-host/bin/windows/release/vcpkg_installed/x64-mingw-static/include/lilv-0"])
 elif env["platform"] == "web":
     if env["dev_build"]:
         env.Append(CPPFLAGS=["-g"])

@@ -97,6 +97,11 @@ jobs:
           use-dotnet: false
           include-templates: false
 
+      - name: Godot import
+        continue-on-error: true
+        run: |
+          godot --headless --import
+
       - name: Verify godot-lv2-host
         run: |
           godot --headless -s lv2host_run_scene.gd --quit-after 300 2> /dev/null | grep 'it works!'

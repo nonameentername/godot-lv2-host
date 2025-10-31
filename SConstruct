@@ -117,11 +117,13 @@ elif env["platform"] == "macos":
 
     if env["dev_build"]:
         env.Append(LIBPATH=["addons/lv2-host/bin/osxcross/debug/vcpkg_installed/univeral-osxcross/debug/lib"])
-        env.Append(CPPPATH=["addons/lv2-host/bin/osxcross/debug/vcpkg_installed/univeral-osxcross/include"])
+        env.Append(CPPPATH=["addons/lv2-host/bin/osxcross/debug/vcpkg_installed/univeral-osxcross/include",
+                            "addons/lv2-host/bin/osxcross/debug/vcpkg_installed/univeral-osxcross/include/lilv-0"])
         #env.Append(RPATH=["", "."])
     else:
         env.Append(LIBPATH=["addons/lv2-host/bin/osxcross/release/vcpkg_installed/univeral-osxcross/lib"])
-        env.Append(CPPPATH=["addons/lv2-host/bin/osxcross/release/vcpkg_installed/univeral-osxcross/include"])
+        env.Append(CPPPATH=["addons/lv2-host/bin/osxcross/release/vcpkg_installed/univeral-osxcross/include",
+                            "addons/lv2-host/bin/osxcross/release/vcpkg_installed/univeral-osxcross/include/lilv-0"])
         #env.Append(RPATH=["", "."])
 elif env["platform"] == "linux":
     lilv_library = "lilv-0"
@@ -129,11 +131,13 @@ elif env["platform"] == "linux":
 
     if env["dev_build"]:
         env.Append(LIBPATH=["addons/lv2-host/bin/linux/debug/vcpkg_installed/x64-linux/debug/lib"])
-        env.Append(CPPPATH=["addons/lv2-host/bin/linux/debug/vcpkg_installed/x64-linux/include", "addons/lv2-host/bin/linux/debug/vcpkg_installed/x64-linux/include/lilv-0"])
+        env.Append(CPPPATH=["addons/lv2-host/bin/linux/debug/vcpkg_installed/x64-linux/include",
+                            "addons/lv2-host/bin/linux/debug/vcpkg_installed/x64-linux/include/lilv-0"])
         #env.Append(RPATH=["", "."])
     else:
         env.Append(LIBPATH=["addons/lv2-host/bin/linux/release/vcpkg_installed/x64-linux/lib"])
-        env.Append(CPPPATH=["addons/lv2-host/bin/linux/release/vcpkg_installed/x64-linux/include", "addons/lv2-host/bin/linux/release/vcpkg_installed/x64-linux/include/lilv-0"])
+        env.Append(CPPPATH=["addons/lv2-host/bin/linux/release/vcpkg_installed/x64-linux/include",
+                            "addons/lv2-host/bin/linux/release/vcpkg_installed/x64-linux/include/lilv-0"])
         #env.Append(RPATH=["", "."])
 
 #env.Append(CPPFLAGS=["-fexceptions"])

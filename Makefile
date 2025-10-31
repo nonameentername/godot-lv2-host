@@ -48,5 +48,15 @@ mingw:
 	$(MAKE) shell-mingw SHELL_COMMAND='./platform/mingw/build_debug.sh'
 	$(MAKE) shell-mingw SHELL_COMMAND='./platform/mingw/build_release.sh'
 
+docker-osxcross:
+	docker build -t godot-lv2host-osxcross ./platform/osxcross
+
+shell-osxcross: docker-osxcross
+	docker run -it --rm -v ${CURDIR}:${CURDIR} --user ${UID}:${GID} -w ${CURDIR} godot-lv2host-osxcross ${SHELL_COMMAND}
+
+osxcross:
+	$(MAKE) shell-osxcross SHELL_COMMAND='./platform/osxcross/build_release.sh'
+	$(MAKE) shell-osxcross SHELL_COMMAND='./platform/osxcross/build_debug.sh'
+
 clean:
 	rm -rf addons/lv2-host/bin modules/godot/bin vcpkg_installed

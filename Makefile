@@ -8,7 +8,7 @@ else
 PLATFORM=windows
 endif
 
-all: ubuntu
+all: ubuntu mingw osxcross
 
 dev-build:
 	scons platform=$(PLATFORM) target=template_debug dev_build=yes debug_symbols=yes compiledb=true #asan=true

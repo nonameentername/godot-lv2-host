@@ -2,6 +2,7 @@
 *.obj
 *.os
 *.so
+*.zip
 .cache
 .godot
 .mono

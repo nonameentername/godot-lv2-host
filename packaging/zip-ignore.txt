@@ -1,0 +1,9 @@
+addons/lv2-host/bin/osxcross/*
+addons/lv2-host/bin/osxcross-arm64/*
+addons/lv2-host/bin/osxcross-x86_64/*
+addons/lv2-host/bin/linux/debug/*
+addons/lv2-host/bin/linux/release/*
+addons/lv2-host/bin/windows/debug/*
+addons/lv2-host/bin/windows/release/*
+addons/lv2-host/bin/macos/debug/*
+addons/lv2-host/bin/macos/release/*

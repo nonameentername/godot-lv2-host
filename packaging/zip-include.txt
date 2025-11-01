@@ -1,0 +1,1 @@
+addons/lv2-host/*

@@ -989,7 +989,6 @@ int Lv2Host::get_output_midi_count() {
 
 int Lv2Host::get_input_control_count() {
     return control_inputs.size();
-    ;
 }
 
 int Lv2Host::get_output_control_count() {

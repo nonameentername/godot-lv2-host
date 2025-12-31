@@ -15,7 +15,7 @@ template <typename T> struct AudioRingBuffer {
 template <typename T> class Lv2CircularBuffer {
 
 private:
-    AudioRingBuffer<T> *audio_buffer;
+    AudioRingBuffer<T> audio_buffer;
 
 public:
     Lv2CircularBuffer();

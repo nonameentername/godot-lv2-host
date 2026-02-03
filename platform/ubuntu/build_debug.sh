@@ -19,8 +19,8 @@ cmake -DCMAKE_BUILD_TYPE=Debug \
 
 # build godot-lv2-host
 
-#cd $dir/addons/lv2/bin/linux/debug
-#make
+cd $dir/addons/lv2/bin/linux/debug
+make
 
 # build godot-lv2-host (gdextension)
 

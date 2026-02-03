@@ -15,6 +15,7 @@
 #include "lv2_server.h"
 #include "lv2_server_node.h"
 #include "version_generated.gen.h"
+#include <iostream>
 
 namespace godot {
 

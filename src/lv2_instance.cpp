@@ -11,6 +11,7 @@
 #include "lv2_server.h"
 #include <cstdio>
 #include <cstdlib>
+#include <iostream>
 
 using namespace godot;
 
@@ -62,6 +63,7 @@ Lv2Instance::Lv2Instance() {
 void Lv2Instance::configure() {
     lock();
 
+    //TODO: unlock and return on error
     if (!lv2_host->find_plugin(std::string(uri.ascii()))) {
         std::cerr << "Plugin not found: " << uri.ascii() << "\n";
     }

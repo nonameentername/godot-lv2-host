@@ -4,7 +4,7 @@ godot-lv2-host
 [![builds](https://github.com/nonameentername/godot-lv2-host/actions/workflows/builds.yml/badge.svg)](https://github.com/nonameentername/godot-lv2-host/actions/workflows/builds.yml)
 [![docker_builds](https://github.com/nonameentername/godot-lv2-host/actions/workflows/build_images.yml/badge.svg)](https://github.com/nonameentername/godot-lv2-host/actions/workflows/build_images.yml)
 
-Godot GDExtension library to allow using LV2 plugins in Godot.  Currently works with Godot v4.5 stable release.
+Godot GDExtension library to allow using LV2 plugins in Godot.  Currently works with Godot v4.6 stable release.
 
 Projects using godot-lv2-host
 -----------------------------

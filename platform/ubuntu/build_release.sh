@@ -18,8 +18,8 @@ cmake -DCMAKE_BUILD_TYPE=Release \
 
 # build godot-lv2-host
 
-#cd $dir/addons/lv2/bin/linux/release
-#make
+cd $dir/addons/lv2/bin/linux/release
+make
 
 # build godot-lv2-host (gdextension)
 

@@ -1,0 +1,25 @@
+diff --git a/src/dylib.c b/src/dylib.c
+index 4c6c219..b8fdddc 100644
+--- a/src/dylib.c
++++ b/src/dylib.c
+@@ -34,12 +34,20 @@ dylib_func(DylibLib* handle, const char* symbol)
+ 
+ #else
+ 
++#define _GNU_SOURCE
+ #  include <dlfcn.h>
++#ifndef __APPLE__
++#  include <link.h> 
++#endif
+ 
+ void*
+ dylib_open(const char* const filename, const unsigned flags)
+ {
++#ifdef __APPLE__
+   return dlopen(filename, flags == DYLIB_LAZY ? RTLD_LAZY : RTLD_NOW);
++#else
++  return dlmopen(LM_ID_NEWLM, filename, flags == DYLIB_LAZY ? RTLD_LAZY : RTLD_NOW);
++#endif
+ }
+ 
+ int

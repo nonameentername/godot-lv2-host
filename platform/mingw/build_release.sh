@@ -10,6 +10,7 @@ dir=$(realpath .)
 build_dir=$dir/addons/lv2-host/bin/windows/release
 
 mkdir -p $build_dir
+mkdir -p $build_dir/bin
 cd $build_dir
 
 cmake -DCMAKE_TOOLCHAIN_FILE=$dir/modules/vcpkg/scripts/buildsystems/vcpkg.cmake \
@@ -29,15 +30,14 @@ cmake -DCMAKE_TOOLCHAIN_FILE=$dir/modules/vcpkg/scripts/buildsystems/vcpkg.cmake
 
 # build godot-lv2-host
 
-#cd $dir/addons/lv2/bin/windows/release
-#make
+cd $dir/addons/lv2/bin/windows/release
+make
 
 # build godot-lv2-host (gdextension)
 
-#TODO: is this needed?
-#cp /usr/lib/gcc/x86_64-w64-mingw32/*-posix/libstdc++-6.dll $build_dir/lib/
-#cp /usr/lib/gcc/x86_64-w64-mingw32/*-posix/libgcc_s_seh-1.dll $build_dir/lib/
-#cp /usr/x86_64-w64-mingw32/lib/libwinpthread-1.dll $build_dir/lib/
+cp /usr/lib/gcc/x86_64-w64-mingw32/*-posix/libstdc++-6.dll $build_dir/bin/
+cp /usr/lib/gcc/x86_64-w64-mingw32/*-posix/libgcc_s_seh-1.dll $build_dir/bin/
+cp /usr/x86_64-w64-mingw32/lib/libwinpthread-1.dll $build_dir/bin/
 
 cd $dir
 scons platform=windows target=template_release
